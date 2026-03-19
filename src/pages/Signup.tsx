@@ -1,0 +1,109 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { motion } from "framer-motion";
+import { MessageSquare, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+
+export default function Signup() {
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username },
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      toast.success("Аккаунт создан! Проверьте email для подтверждения.");
+      navigate("/login");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        <div className="text-center mb-8">
+          <motion.div
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 200 }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl duke-gradient duke-glow mb-4"
+          >
+            <MessageSquare className="w-8 h-8 text-primary-foreground" />
+          </motion.div>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">DUKE</h1>
+          <p className="text-muted-foreground mt-1">Создайте аккаунт</p>
+        </div>
+
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="username">Имя пользователя</Label>
+            <Input
+              id="username"
+              placeholder="duke_user"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="bg-card border-border focus:border-primary"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-card border-border focus:border-primary"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Пароль</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Минимум 6 символов"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="bg-card border-border focus:border-primary"
+            />
+          </div>
+          <Button type="submit" className="w-full duke-gradient" disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Зарегистрироваться"}
+          </Button>
+        </form>
+
+        <p className="text-center text-muted-foreground mt-6 text-sm">
+          Уже есть аккаунт?{" "}
+          <Link to="/login" className="text-primary hover:underline">
+            Войти
+          </Link>
+        </p>
+      </motion.div>
+    </div>
+  );
+}
