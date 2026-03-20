@@ -46,6 +46,9 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowNewChat(true)}>
             <Plus className="w-4 h-4" />
           </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowNewGroup(true)}>
+            <Users className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate("/settings")}>
             <Settings className="w-4 h-4" />
           </Button>
