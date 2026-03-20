@@ -24,6 +24,7 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
   const { profile } = useProfile();
   const [search, setSearch] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
   const navigate = useNavigate();
 
   const filtered = conversations.filter((c) => {
