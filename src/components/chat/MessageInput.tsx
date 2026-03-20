@@ -1,21 +1,26 @@
 import { useState, useRef } from "react";
-import { Send, Paperclip, X, Image } from "lucide-react";
+import { Send, Paperclip, X, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageWithSender } from "@/hooks/useMessages";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 
 interface Props {
   onSend: (content: string, type?: string, fileUrl?: string, fileName?: string, fileSize?: number) => void;
   replyTo: MessageWithSender | null;
   onCancelReply: () => void;
   conversationId: string;
+  onTyping?: () => void;
 }
 
-export default function MessageInput({ onSend, replyTo, onCancelReply, conversationId }: Props) {
+export default function MessageInput({ onSend, replyTo, onCancelReply, conversationId, onTyping }: Props) {
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSend = () => {
@@ -29,6 +34,16 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setText(e.target.value);
+    onTyping?.();
+  };
+
+  const handleEmojiSelect = (emoji: any) => {
+    setText((prev) => prev + emoji.native);
+    setEmojiOpen(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +82,6 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
 
   return (
     <div className="border-t border-border bg-card/50 backdrop-blur-sm">
-      {/* Reply preview */}
       {replyTo && (
         <div className="px-4 pt-3 flex items-center gap-2">
           <div className="flex-1 bg-muted rounded-lg px-3 py-2 border-l-2 border-primary">
@@ -97,10 +111,33 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
         >
           <Paperclip className="w-4 h-4" />
         </Button>
+
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground flex-shrink-0"
+            >
+              <Smile className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 border-border" side="top" align="start">
+            <Picker
+              data={data}
+              onEmojiSelect={handleEmojiSelect}
+              theme="dark"
+              locale="ru"
+              previewPosition="none"
+              skinTonePosition="none"
+            />
+          </PopoverContent>
+        </Popover>
+
         <Input
           placeholder="Сообщение..."
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           className="bg-muted border-0 h-9 text-sm"
           disabled={uploading}

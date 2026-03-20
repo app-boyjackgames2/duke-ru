@@ -162,5 +162,26 @@ export function useConversations() {
     return newConv.id;
   };
 
-  return { conversations, loading, fetchConversations, createDirectConversation };
+  const createGroupConversation = async (name: string, avatarUrl: string | null, memberIds: string[]) => {
+    if (!user) return null;
+
+    const { data: newConv } = await supabase
+      .from("conversations")
+      .insert({ type: "group", name, avatar_url: avatarUrl, created_by: user.id })
+      .select()
+      .single();
+
+    if (!newConv) return null;
+
+    const members = [user.id, ...memberIds].map((uid) => ({
+      conversation_id: newConv.id,
+      user_id: uid,
+    }));
+
+    await supabase.from("conversation_members").insert(members);
+    fetchConversations();
+    return newConv.id;
+  };
+
+  return { conversations, loading, fetchConversations, createDirectConversation, createGroupConversation };
 }

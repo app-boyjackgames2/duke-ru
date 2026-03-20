@@ -143,6 +143,7 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
       </div>
 
       <NewChatDialog open={showNewChat} onOpenChange={setShowNewChat} />
+      <CreateGroupDialog open={showNewGroup} onOpenChange={setShowNewGroup} />
     </div>
   );
 }
