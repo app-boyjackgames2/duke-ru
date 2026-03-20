@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { MessageSquare, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { lovable } from "@/integrations/lovable";
+import { Separator } from "@/components/ui/separator";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
