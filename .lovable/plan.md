@@ -1,43 +1,69 @@
 
-# DUKE Messenger — MVP Plan
 
-## Design
-- **Color scheme**: Dark navy background (`hsl(220, 60%, 8%)`) with electric blue accents (`hsl(210, 100%, 55%)`)
-- **Layout**: Two-panel — left sidebar with conversations list, right panel with active chat
-- **Typography**: Clean sans-serif, modern spacing, subtle glow effects on active elements
+# DUKE Messenger — Update 20.03.2026
 
-## Phase 1: Auth & Profiles (Supabase)
-- Enable Lovable Cloud with Supabase Auth (email/password)
-- Create `profiles` table (id, username, avatar_url, status_text, is_online, last_seen)
-- Auto-create profile on signup via trigger
-- Login & signup pages with DUKE branding
-- Profile settings page (edit avatar, username, status)
+## Overview
+Four features: group chats, Google sign-in, typing indicator, emoji picker.
 
-## Phase 2: Chat Infrastructure
-- Create tables: `conversations` (id, type: direct/group, name, avatar_url, created_by), `conversation_members` (conversation_id, user_id, joined_at), `messages` (id, conversation_id, sender_id, content, type: text/file/voice, reply_to, created_at, updated_at)
-- RLS policies so users only see their own conversations
-- Supabase Realtime subscriptions for live message delivery
-- Online/offline presence tracking via Realtime Presence
+---
 
-## Phase 3: Chat UI
-- **Sidebar**: Search bar, list of conversations sorted by last message, unread badges, user avatars with online dot
-- **Chat area**: Message bubbles (sent vs received styling), timestamps, auto-scroll, typing indicators
-- **Message input**: Text input with send button, emoji picker
-- New conversation: search users by username, start 1-on-1 or create group chat
+## 1. Group Chats
 
-## Phase 4: Reactions & Replies
-- Emoji reactions on messages (stored in `message_reactions` table)
-- Reply-to threading — click reply on a message, shows quoted preview above input
-- Message forwarding to other conversations
+**Database**: No schema changes needed — `conversations` table already supports `type='group'`, `name`, `avatar_url`.
 
-## Phase 5: File & Image Sharing
-- Supabase Storage bucket for chat attachments
-- Upload images/files via input area (drag & drop + button)
-- Image previews inline in chat, file downloads for other types
-- File size limit ~50MB per upload
+**New component**: `CreateGroupDialog.tsx`
+- Step 1: Enter group name, upload avatar to `avatars` bucket
+- Step 2: Search and select multiple users (checkboxes)
+- Step 3: Create conversation with `type='group'`, insert all selected members into `conversation_members`
 
-## Pages
-- `/login` — Sign in
-- `/signup` — Register
-- `/` — Main chat interface (sidebar + chat)
-- `/settings` — Profile settings
+**UI changes**:
+- Add "Create Group" button in `ChatSidebar` (or option in existing `NewChatDialog`)
+- `ChatArea` header: show member count for groups, display group name/avatar
+- Group messages show sender names above each bubble (already implemented via `showAvatar`)
+
+**Hook changes**: Add `createGroupConversation(name, avatarUrl, memberIds)` to `useConversations`.
+
+---
+
+## 2. Sign in with Google
+
+Use Lovable Cloud managed Google OAuth (no API key needed).
+
+- Run the **Configure Social Login** tool to generate `src/integrations/lovable/` module
+- Add Google sign-in button on `Login.tsx` and `Signup.tsx` using `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`
+- Style button with Google branding in DUKE theme
+
+---
+
+## 3. Typing Indicator
+
+**Approach**: Use Supabase Realtime Presence (no DB table needed).
+
+- In `ChatArea`, track presence on a channel per conversation
+- When user types in `MessageInput`, broadcast `{ typing: true, username }` via presence
+- Display "Username печатает..." below messages when other users are typing
+- Debounce: stop typing status 2 seconds after last keystroke
+
+**New hook**: `useTypingIndicator(conversationId)` — returns `typingUsers: string[]` and `setTyping(isTyping)`.
+
+---
+
+## 4. Emoji Picker
+
+Install `emoji-mart` or `@emoji-mart/react` package for a full emoji picker.
+
+- Add emoji button (😀) in `MessageInput` next to the paperclip
+- Click opens a popover with the full emoji picker grid
+- Selecting an emoji inserts it into the text input at cursor position
+- Keep the existing quick-reaction emojis on `MessageBubble` as-is
+
+---
+
+## Implementation Order
+1. Database: no migrations needed
+2. Configure Google OAuth (tool call)
+3. Build `CreateGroupDialog` + update hooks
+4. Build `useTypingIndicator` hook + integrate into `ChatArea`/`MessageInput`
+5. Add emoji picker to `MessageInput`
+6. Update `Login.tsx`/`Signup.tsx` with Google button
+
