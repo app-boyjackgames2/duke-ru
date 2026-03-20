@@ -4,22 +4,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { ConversationWithDetails } from "@/hooks/useConversations";
+import { ChannelWithDetails } from "@/hooks/useChannels";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import NewChatDialog from "./NewChatDialog";
 import CreateGroupDialog from "./CreateGroupDialog";
+import ChannelList from "../channels/ChannelList";
 import { useNavigate } from "react-router-dom";
 
 interface Props {
   conversations: ConversationWithDetails[];
+  channels: ChannelWithDetails[];
   activeId: string | null;
-  onSelect: (id: string) => void;
+  activeType: "chat" | "channel";
+  onSelectChat: (id: string) => void;
+  onSelectChannel: (id: string) => void;
 }
 
-export default function ChatSidebar({ conversations, activeId, onSelect }: Props) {
+export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel }: Props) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const [search, setSearch] = useState("");
@@ -71,18 +77,33 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
         </div>
       </div>
 
+      {/* Channels */}
+      <ChannelList
+        channels={channels}
+        activeId={activeType === "channel" ? activeId : null}
+        onSelect={onSelectChannel}
+      />
+
+      <Separator className="mx-3" />
+
       {/* Conversations list */}
+      <div className="flex items-center px-3 py-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <MessageSquare className="w-3.5 h-3.5" />
+          Чаты
+        </span>
+      </div>
       <ScrollArea className="flex-1 scrollbar-thin">
         <div className="px-2 pb-2">
           {filtered.map((conv) => {
             const name = conv.type === "direct" ? conv.other_user?.username || "Пользователь" : conv.name || "Группа";
-            const isActive = conv.id === activeId;
+            const isActive = activeType === "chat" && conv.id === activeId;
             const isOnline = conv.type === "direct" && conv.other_user?.is_online;
 
             return (
               <button
                 key={conv.id}
-                onClick={() => onSelect(conv.id)}
+                onClick={() => onSelectChat(conv.id)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg mb-0.5 transition-colors text-left ${
                   isActive
                     ? "bg-primary/10 border border-primary/20 duke-glow-sm"
@@ -113,7 +134,7 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
                   </div>
                   {conv.last_message && (
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {conv.last_message.type === "image" ? "📷 Фото" : conv.last_message.type === "file" ? "📎 Файл" : conv.last_message.content}
+                      {conv.last_message.type === "image" ? "📷 Фото" : conv.last_message.type === "file" ? "📎 Файл" : conv.last_message.type === "voice" ? "🎤 Голосовое" : conv.last_message.content}
                     </p>
                   )}
                 </div>

@@ -14,6 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      channel_members: {
+        Row: {
+          channel_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          channel_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_members_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_posts: {
+        Row: {
+          author_id: string
+          channel_id: string
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          channel_id: string
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          channel_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_posts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conversation_members: {
         Row: {
           conversation_id: string
@@ -205,6 +305,10 @@ export type Database = {
     Functions: {
       can_access_message: {
         Args: { _message_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_channel_member: {
+        Args: { _channel_id: string; _user_id: string }
         Returns: boolean
       }
       is_conversation_member: {
