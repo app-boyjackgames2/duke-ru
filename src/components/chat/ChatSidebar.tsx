@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, LogOut, Settings, MessageSquare } from "lucide-react";
+import { Search, Plus, LogOut, Settings, MessageSquare, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,6 +10,7 @@ import { ConversationWithDetails } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import NewChatDialog from "./NewChatDialog";
+import CreateGroupDialog from "./CreateGroupDialog";
 import { useNavigate } from "react-router-dom";
 
 interface Props {
@@ -23,6 +24,7 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
   const { profile } = useProfile();
   const [search, setSearch] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
   const navigate = useNavigate();
 
   const filtered = conversations.filter((c) => {
@@ -43,6 +45,9 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowNewChat(true)}>
             <Plus className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowNewGroup(true)}>
+            <Users className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate("/settings")}>
             <Settings className="w-4 h-4" />
@@ -138,6 +143,7 @@ export default function ChatSidebar({ conversations, activeId, onSelect }: Props
       </div>
 
       <NewChatDialog open={showNewChat} onOpenChange={setShowNewChat} />
+      <CreateGroupDialog open={showNewGroup} onOpenChange={setShowNewGroup} />
     </div>
   );
 }

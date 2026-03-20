@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { MessageWithSender, useMessages } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import MessageInput from "./MessageInput";
 import MessageBubble from "./MessageBubble";
 import { ConversationWithDetails } from "@/hooks/useConversations";
 import { Phone, Video, MoreVertical, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 
 interface Props {
   conversation: ConversationWithDetails | null;
@@ -16,6 +16,7 @@ interface Props {
 export default function ChatArea({ conversation }: Props) {
   const { user } = useAuth();
   const { messages, loading, sendMessage, toggleReaction } = useMessages(conversation?.id || null);
+  const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null);
 
@@ -64,7 +65,9 @@ export default function ChatArea({ conversation }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-foreground">{chatName}</h3>
             <p className="text-xs text-muted-foreground">
-              {isOnline ? (
+              {conversation.type === "group" ? (
+                "Группа"
+              ) : isOnline ? (
                 <span className="text-duke-online">В сети</span>
               ) : (
                 "Не в сети"
@@ -103,6 +106,11 @@ export default function ChatArea({ conversation }: Props) {
             />
           );
         })}
+        {typingUsers.length > 0 && (
+          <div className="text-xs text-muted-foreground italic px-2 py-1">
+            {typingUsers.join(", ")} печатает...
+          </div>
+        )}
       </div>
 
       {/* Input */}
@@ -111,6 +119,7 @@ export default function ChatArea({ conversation }: Props) {
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
         conversationId={conversation.id}
+        onTyping={() => setTyping(true)}
       />
     </div>
   );
