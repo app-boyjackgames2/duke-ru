@@ -2,14 +2,18 @@ import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConversations } from "@/hooks/useConversations";
+import { useChannels } from "@/hooks/useChannels";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatArea from "@/components/chat/ChatArea";
+import ChannelView from "@/components/channels/ChannelView";
 import { Loader2 } from "lucide-react";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
   const { conversations, loading: convsLoading } = useConversations();
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const { channels, loading: channelsLoading } = useChannels();
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<"chat" | "channel">("chat");
 
   if (authLoading) {
     return (
@@ -21,16 +25,24 @@ export default function Index() {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
+  const activeConversation = activeType === "chat" ? conversations.find((c) => c.id === activeId) || null : null;
+  const activeChannel = activeType === "channel" ? channels.find((c) => c.id === activeId) || null : null;
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">
       <ChatSidebar
         conversations={conversations}
-        activeId={activeConversationId}
-        onSelect={setActiveConversationId}
+        channels={channels}
+        activeId={activeId}
+        activeType={activeType}
+        onSelectChat={(id) => { setActiveId(id); setActiveType("chat"); }}
+        onSelectChannel={(id) => { setActiveId(id); setActiveType("channel"); }}
       />
-      <ChatArea conversation={activeConversation} />
+      {activeType === "channel" && activeChannel ? (
+        <ChannelView channel={activeChannel} />
+      ) : (
+        <ChatArea conversation={activeConversation} />
+      )}
     </div>
   );
 }

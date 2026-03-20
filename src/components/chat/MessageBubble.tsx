@@ -35,6 +35,13 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
         </div>
       );
     }
+    if (message.type === "voice" && message.file_url) {
+      return (
+        <div className="flex items-center gap-2">
+          <audio controls src={message.file_url} className="h-8 max-w-[220px]" />
+        </div>
+      );
+    }
     if (message.type === "file" && message.file_url) {
       return (
         <a href={message.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline">
