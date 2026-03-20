@@ -10,6 +10,7 @@ import { ConversationWithDetails } from "@/hooks/useConversations";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 import NewChatDialog from "./NewChatDialog";
+import CreateGroupDialog from "./CreateGroupDialog";
 import { useNavigate } from "react-router-dom";
 
 interface Props {
