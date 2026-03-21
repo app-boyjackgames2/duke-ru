@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export interface MessageWithSender {
   id: string;
@@ -123,6 +124,14 @@ export function useMessages(conversationId: string | null) {
     });
   };
 
+  const deleteMessage = async (messageId: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("messages").delete().eq("id", messageId).eq("sender_id", user.id);
+    if (error) {
+      toast.error("Не удалось удалить сообщение");
+    }
+  };
+
   const toggleReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
     const existing = messages
@@ -140,5 +149,14 @@ export function useMessages(conversationId: string | null) {
     }
   };
 
-  return { messages, loading, sendMessage, toggleReaction, fetchMessages };
+  // Mark conversation as read
+  const markAsRead = useCallback(async () => {
+    if (!user || !conversationId) return;
+    await supabase.from("conversation_last_read").upsert(
+      { conversation_id: conversationId, user_id: user.id, last_read_at: new Date().toISOString() },
+      { onConflict: "conversation_id,user_id" }
+    );
+  }, [user, conversationId]);
+
+  return { messages, loading, sendMessage, deleteMessage, toggleReaction, fetchMessages, markAsRead };
 }

@@ -1,6 +1,6 @@
 import { MessageWithSender } from "@/hooks/useMessages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Reply, SmilePlus, Download, FileText } from "lucide-react";
+import { Reply, SmilePlus, Download, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -13,10 +13,11 @@ interface Props {
   showAvatar: boolean;
   onReply: () => void;
   onReaction: (emoji: string) => void;
+  onDelete?: (messageId: string) => void;
   currentUserId: string;
 }
 
-export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, currentUserId }: Props) {
+export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, currentUserId }: Props) {
   const [showEmojis, setShowEmojis] = useState(false);
 
   const groupedReactions = message.reactions?.reduce((acc, r) => {
@@ -98,13 +99,18 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
           </div>
 
           {/* Actions (hover) */}
-          <div className={`absolute top-0 ${isMine ? "-left-16" : "-right-16"} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5`}>
+          <div className={`absolute top-0 ${isMine ? "-left-20" : "-right-20"} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5`}>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onReply}>
               <Reply className="w-3.5 h-3.5" />
             </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowEmojis(!showEmojis)}>
               <SmilePlus className="w-3.5 h-3.5" />
             </Button>
+            {isMine && onDelete && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => onDelete(message.id)}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
           </div>
 
           {/* Emoji picker */}

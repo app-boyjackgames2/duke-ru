@@ -15,7 +15,7 @@ interface Props {
 
 export default function ChatArea({ conversation }: Props) {
   const { user } = useAuth();
-  const { messages, loading, sendMessage, toggleReaction } = useMessages(conversation?.id || null);
+  const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead } = useMessages(conversation?.id || null);
   const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null);
@@ -25,6 +25,13 @@ export default function ChatArea({ conversation }: Props) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Mark as read when viewing conversation
+  useEffect(() => {
+    if (conversation?.id && messages.length > 0) {
+      markAsRead();
+    }
+  }, [conversation?.id, messages.length, markAsRead]);
 
   if (!conversation) {
     return (
@@ -102,6 +109,7 @@ export default function ChatArea({ conversation }: Props) {
               showAvatar={showAvatar}
               onReply={() => setReplyTo(msg)}
               onReaction={(emoji) => toggleReaction(msg.id, emoji)}
+              onDelete={deleteMessage}
               currentUserId={user?.id || ""}
             />
           );

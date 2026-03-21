@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { ConversationWithDetails } from "@/hooks/useConversations";
@@ -102,6 +103,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
             const name = conv.type === "direct" ? conv.other_user?.username || "Пользователь" : conv.name || "Группа";
             const isActive = activeType === "chat" && conv.id === activeId;
             const isOnline = conv.type === "direct" && conv.other_user?.is_online;
+            const unread = conv.unread_count || 0;
 
             return (
               <button
@@ -129,17 +131,26 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
                     <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>
                       {name}
                     </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {conv.last_message && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mt-0.5">
                     {conv.last_message && (
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
-                      </span>
+                      <p className="text-xs text-muted-foreground truncate flex-1">
+                        {conv.last_message.type === "image" ? "📷 Фото" : conv.last_message.type === "file" ? "📎 Файл" : conv.last_message.type === "voice" ? "🎤 Голосовое" : conv.last_message.content}
+                      </p>
+                    )}
+                    {unread > 0 && !isActive && (
+                      <Badge className="ml-1.5 h-5 min-w-[20px] px-1.5 text-[10px] font-bold duke-gradient border-0 text-primary-foreground">
+                        {unread > 99 ? "99+" : unread}
+                      </Badge>
                     )}
                   </div>
-                  {conv.last_message && (
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {conv.last_message.type === "image" ? "📷 Фото" : conv.last_message.type === "file" ? "📎 Файл" : conv.last_message.type === "voice" ? "🎤 Голосовое" : conv.last_message.content}
-                    </p>
-                  )}
                 </div>
               </button>
             );

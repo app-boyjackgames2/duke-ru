@@ -4,10 +4,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Megaphone, Send, Loader2, UserPlus } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import InviteToChannelDialog from "./InviteToChannelDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Props {
   channel: ChannelWithDetails;
@@ -27,6 +29,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     await createPost(newPost.trim());
     setNewPost("");
     setSending(false);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    const { error } = await supabase.from("channel_posts").delete().eq("id", postId);
+    if (error) {
+      toast.error("Не удалось удалить пост");
+    }
   };
 
   return (
@@ -68,7 +77,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           </div>
         ) : (
           posts.map((post) => (
-            <div key={post.id} className="bg-card rounded-xl p-4 border border-border">
+            <div key={post.id} className="bg-card rounded-xl p-4 border border-border group relative">
               <div className="flex items-center gap-2.5 mb-3">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={post.author?.avatar_url || ""} />
@@ -76,12 +85,22 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                     {post.author?.username?.[0]?.toUpperCase() || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-foreground">{post.author?.username}</p>
                   <p className="text-xs text-muted-foreground">
                     {format(new Date(post.created_at), "d MMM, HH:mm", { locale: ru })}
                   </p>
                 </div>
+                {post.author_id === user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDeletePost(post.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
               </div>
               <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
               {post.image_url && (
