@@ -49,6 +49,15 @@ export function useConversations() {
 
     if (!convos) { setConversations([]); setLoading(false); return; }
 
+    // Fetch last_read timestamps
+    const { data: lastReadData } = await supabase
+      .from("conversation_last_read")
+      .select("conversation_id, last_read_at")
+      .eq("user_id", user.id);
+
+    const lastReadMap = new Map<string, string>();
+    lastReadData?.forEach((lr) => lastReadMap.set(lr.conversation_id, lr.last_read_at));
+
     const enriched: ConversationWithDetails[] = await Promise.all(
       convos.map(async (conv) => {
         // Get last message
@@ -74,6 +83,27 @@ export function useConversations() {
           };
         }
 
+        // Unread count
+        let unread_count = 0;
+        const lastRead = lastReadMap.get(conv.id);
+        if (lastRead) {
+          const { count } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("conversation_id", conv.id)
+            .neq("sender_id", user.id)
+            .gt("created_at", lastRead);
+          unread_count = count || 0;
+        } else {
+          // Never read — count all messages from others
+          const { count } = await supabase
+            .from("messages")
+            .select("*", { count: "exact", head: true })
+            .eq("conversation_id", conv.id)
+            .neq("sender_id", user.id);
+          unread_count = count || 0;
+        }
+
         // For direct convos, get the other user
         let other_user: ConversationWithDetails["other_user"];
         if (conv.type === "direct") {
@@ -93,7 +123,7 @@ export function useConversations() {
           }
         }
 
-        return { ...conv, last_message, other_user };
+        return { ...conv, last_message, other_user, unread_count };
       })
     );
 
@@ -104,7 +134,6 @@ export function useConversations() {
   useEffect(() => {
     fetchConversations();
 
-    // Subscribe to new messages to refresh list
     const channel = supabase
       .channel("conversations-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => {
@@ -118,7 +147,6 @@ export function useConversations() {
   const createDirectConversation = async (otherUserId: string) => {
     if (!user) return null;
 
-    // Check if direct conversation already exists
     const { data: myMemberships } = await supabase
       .from("conversation_members")
       .select("conversation_id")
@@ -144,7 +172,6 @@ export function useConversations() {
       }
     }
 
-    // Create new
     const { data: newConv } = await supabase
       .from("conversations")
       .insert({ type: "direct", created_by: user.id })
@@ -162,26 +189,5 @@ export function useConversations() {
     return newConv.id;
   };
 
-  const createGroupConversation = async (name: string, avatarUrl: string | null, memberIds: string[]) => {
-    if (!user) return null;
-
-    const { data: newConv } = await supabase
-      .from("conversations")
-      .insert({ type: "group", name, avatar_url: avatarUrl, created_by: user.id })
-      .select()
-      .single();
-
-    if (!newConv) return null;
-
-    const members = [user.id, ...memberIds].map((uid) => ({
-      conversation_id: newConv.id,
-      user_id: uid,
-    }));
-
-    await supabase.from("conversation_members").insert(members);
-    fetchConversations();
-    return newConv.id;
-  };
-
-  return { conversations, loading, fetchConversations, createDirectConversation, createGroupConversation };
+  return { conversations, loading, fetchConversations, createDirectConversation };
 }
