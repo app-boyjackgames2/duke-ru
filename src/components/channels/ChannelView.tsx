@@ -4,20 +4,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Megaphone, Send, Loader2 } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import InviteToChannelDialog from "./InviteToChannelDialog";
 
 interface Props {
   channel: ChannelWithDetails;
+  onRefresh?: () => void;
 }
 
-export default function ChannelView({ channel }: Props) {
+export default function ChannelView({ channel, onRefresh }: Props) {
   const { user } = useAuth();
   const { posts, loading, createPost } = useChannelPosts(channel.id);
   const [newPost, setNewPost] = useState("");
   const [sending, setSending] = useState(false);
-  const isCreator = user?.id === channel.created_by;
+  const [showInvite, setShowInvite] = useState(false);
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
@@ -30,17 +32,27 @@ export default function ChannelView({ channel }: Props) {
   return (
     <div className="flex-1 flex flex-col bg-background h-full">
       {/* Header */}
-      <div className="h-16 border-b border-border flex items-center px-4 bg-card/50 backdrop-blur-sm gap-3">
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={channel.avatar_url || ""} />
-          <AvatarFallback className="bg-secondary text-secondary-foreground">
-            <Megaphone className="w-4 h-4" />
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{channel.name}</h3>
-          <p className="text-xs text-muted-foreground">{channel.member_count} участников</p>
+      <div className="h-16 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={channel.avatar_url || ""} />
+            <AvatarFallback className="bg-secondary text-secondary-foreground">
+              <Megaphone className="w-4 h-4" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{channel.name}</h3>
+            <p className="text-xs text-muted-foreground">{channel.member_count} участников</p>
+          </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={() => setShowInvite(true)}
+        >
+          <UserPlus className="w-4 h-4" />
+        </Button>
       </div>
 
       {/* Posts */}
@@ -80,7 +92,7 @@ export default function ChannelView({ channel }: Props) {
         )}
       </div>
 
-      {/* Post input (visible to all members) */}
+      {/* Post input */}
       <div className="border-t border-border bg-card/50 backdrop-blur-sm p-3">
         <div className="flex gap-2">
           <Textarea
@@ -105,6 +117,13 @@ export default function ChannelView({ channel }: Props) {
           </Button>
         </div>
       </div>
+
+      <InviteToChannelDialog
+        open={showInvite}
+        onOpenChange={setShowInvite}
+        channelId={channel.id}
+        onInvited={onRefresh}
+      />
     </div>
   );
 }

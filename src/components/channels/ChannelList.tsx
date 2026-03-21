@@ -10,9 +10,10 @@ interface Props {
   channels: ChannelWithDetails[];
   activeId: string | null;
   onSelect: (id: string) => void;
+  onRefresh?: () => void;
 }
 
-export default function ChannelList({ channels, activeId, onSelect }: Props) {
+export default function ChannelList({ channels, activeId, onSelect, onRefresh }: Props) {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -60,7 +61,7 @@ export default function ChannelList({ channels, activeId, onSelect }: Props) {
         </div>
       </ScrollArea>
 
-      <CreateChannelDialog open={showCreate} onOpenChange={setShowCreate} />
+      <CreateChannelDialog open={showCreate} onOpenChange={setShowCreate} onCreated={onRefresh} />
     </>
   );
 }

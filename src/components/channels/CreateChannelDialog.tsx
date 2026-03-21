@@ -5,17 +5,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import { useChannels } from "@/hooks/useChannels";
+import { useAuth } from "@/contexts/AuthContext";
 import { Camera, Loader2, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: () => void;
 }
 
-export default function CreateChannelDialog({ open, onOpenChange }: Props) {
-  const { createChannel } = useChannels();
+export default function CreateChannelDialog({ open, onOpenChange, onCreated }: Props) {
+  const { user } = useAuth();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -38,26 +39,49 @@ export default function CreateChannelDialog({ open, onOpenChange }: Props) {
   };
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !user) return;
     setCreating(true);
 
-    let avatarUrl: string | null = null;
-    if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `channels/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, avatarFile);
-      if (!error) {
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-        avatarUrl = urlData.publicUrl;
+    try {
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        const ext = avatarFile.name.split(".").pop();
+        const path = `channels/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("avatars").upload(path, avatarFile);
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+          avatarUrl = urlData.publicUrl;
+        }
       }
-    }
 
-    const id = await createChannel(name.trim(), description.trim(), avatarUrl);
-    if (id) {
-      toast.success("Канал создан!");
+      const { data: ch, error: chErr } = await supabase
+        .from("channels")
+        .insert({ name: name.trim(), description: description.trim(), avatar_url: avatarUrl, created_by: user.id })
+        .select()
+        .single();
+
+      if (chErr || !ch) {
+        toast.error("Ошибка создания канала");
+        setCreating(false);
+        return;
+      }
+
+      const { error: memErr } = await supabase.from("channel_members").insert({
+        channel_id: ch.id,
+        user_id: user.id,
+        role: "admin",
+      });
+
+      if (memErr) {
+        toast.error("Канал создан, но не удалось добавить вас как участника");
+      } else {
+        toast.success("Канал создан!");
+      }
+
       reset();
       onOpenChange(false);
-    } else {
+      onCreated?.();
+    } catch {
       toast.error("Ошибка создания канала");
     }
     setCreating(false);

@@ -6,13 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useConversations } from "@/hooks/useConversations";
 import { Search, Loader2, Camera, Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (conversationId: string) => void;
 }
 
 interface UserResult {
@@ -22,9 +22,8 @@ interface UserResult {
   is_online: boolean | null;
 }
 
-export default function CreateGroupDialog({ open, onOpenChange }: Props) {
+export default function CreateGroupDialog({ open, onOpenChange, onCreated }: Props) {
   const { user } = useAuth();
-  const { createGroupConversation } = useConversations();
   const [step, setStep] = useState<1 | 2>(1);
   const [groupName, setGroupName] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -76,28 +75,50 @@ export default function CreateGroupDialog({ open, onOpenChange }: Props) {
   };
 
   const handleCreate = async () => {
-    if (!groupName.trim() || selected.length === 0) return;
+    if (!groupName.trim() || selected.length === 0 || !user) return;
     setCreating(true);
 
-    let avatarUrl: string | null = null;
-    if (avatarFile) {
-      const ext = avatarFile.name.split(".").pop();
-      const path = `groups/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("avatars").upload(path, avatarFile);
-      if (!error) {
-        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-        avatarUrl = urlData.publicUrl;
+    try {
+      let avatarUrl: string | null = null;
+      if (avatarFile) {
+        const ext = avatarFile.name.split(".").pop();
+        const path = `groups/${Date.now()}.${ext}`;
+        const { error } = await supabase.storage.from("avatars").upload(path, avatarFile);
+        if (!error) {
+          const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+          avatarUrl = urlData.publicUrl;
+        }
       }
-    }
 
-    const memberIds = selected.map((s) => s.user_id);
-    const convId = await createGroupConversation(groupName.trim(), avatarUrl, memberIds);
-    
-    if (convId) {
-      toast.success("Группа создана!");
+      const { data: newConv, error: convErr } = await supabase
+        .from("conversations")
+        .insert({ type: "group", name: groupName.trim(), avatar_url: avatarUrl, created_by: user.id })
+        .select()
+        .single();
+
+      if (convErr || !newConv) {
+        toast.error("Ошибка создания группы");
+        setCreating(false);
+        return;
+      }
+
+      const members = [user.id, ...selected.map((s) => s.user_id)].map((uid) => ({
+        conversation_id: newConv.id,
+        user_id: uid,
+      }));
+
+      const { error: memErr } = await supabase.from("conversation_members").insert(members);
+
+      if (memErr) {
+        toast.error("Группа создана, но ошибка добавления участников");
+      } else {
+        toast.success("Группа создана!");
+      }
+
       reset();
       onOpenChange(false);
-    } else {
+      onCreated?.(newConv.id);
+    } catch {
       toast.error("Ошибка создания группы");
     }
     setCreating(false);
