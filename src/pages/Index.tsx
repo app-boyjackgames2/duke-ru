@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConversations } from "@/hooks/useConversations";
 import { useChannels } from "@/hooks/useChannels";
+import { useNotifications } from "@/hooks/useNotifications";
 import ChatSidebar from "@/components/chat/ChatSidebar";
 import ChatArea from "@/components/chat/ChatArea";
 import ChannelView from "@/components/channels/ChannelView";
@@ -10,10 +11,13 @@ import { Loader2 } from "lucide-react";
 
 export default function Index() {
   const { user, loading: authLoading } = useAuth();
-  const { conversations, loading: convsLoading } = useConversations();
-  const { channels, loading: channelsLoading } = useChannels();
+  const { conversations, loading: convsLoading, fetchConversations } = useConversations();
+  const { channels, loading: channelsLoading, fetchChannels } = useChannels();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<"chat" | "channel">("chat");
+
+  // Enable notifications
+  useNotifications();
 
   if (authLoading) {
     return (
@@ -37,9 +41,11 @@ export default function Index() {
         activeType={activeType}
         onSelectChat={(id) => { setActiveId(id); setActiveType("chat"); }}
         onSelectChannel={(id) => { setActiveId(id); setActiveType("channel"); }}
+        onRefreshChannels={fetchChannels}
+        onRefreshConversations={fetchConversations}
       />
       {activeType === "channel" && activeChannel ? (
-        <ChannelView channel={activeChannel} />
+        <ChannelView channel={activeChannel} onRefresh={fetchChannels} />
       ) : (
         <ChatArea conversation={activeConversation} />
       )}

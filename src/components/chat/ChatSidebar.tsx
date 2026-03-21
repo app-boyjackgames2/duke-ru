@@ -23,9 +23,11 @@ interface Props {
   activeType: "chat" | "channel";
   onSelectChat: (id: string) => void;
   onSelectChannel: (id: string) => void;
+  onRefreshChannels?: () => void;
+  onRefreshConversations?: () => void;
 }
 
-export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel }: Props) {
+export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel, onRefreshChannels, onRefreshConversations }: Props) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const [search, setSearch] = useState("");
@@ -82,6 +84,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
         channels={channels}
         activeId={activeType === "channel" ? activeId : null}
         onSelect={onSelectChannel}
+        onRefresh={onRefreshChannels}
       />
 
       <Separator className="mx-3" />
@@ -164,7 +167,14 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       </div>
 
       <NewChatDialog open={showNewChat} onOpenChange={setShowNewChat} />
-      <CreateGroupDialog open={showNewGroup} onOpenChange={setShowNewGroup} />
+      <CreateGroupDialog
+        open={showNewGroup}
+        onOpenChange={setShowNewGroup}
+        onCreated={(id) => {
+          onRefreshConversations?.();
+          onSelectChat(id);
+        }}
+      />
     </div>
   );
 }
