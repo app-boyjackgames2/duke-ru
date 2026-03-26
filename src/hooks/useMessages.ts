@@ -132,6 +132,12 @@ export function useMessages(conversationId: string | null) {
     }
   };
 
+  const editMessage = async (messageId: string, newContent: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("messages").update({ content: newContent }).eq("id", messageId).eq("sender_id", user.id);
+    if (error) toast.error("Не удалось редактировать сообщение");
+  };
+
   const toggleReaction = async (messageId: string, emoji: string) => {
     if (!user) return;
     const existing = messages
