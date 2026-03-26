@@ -19,6 +19,7 @@ export interface ChannelPost {
   content: string;
   image_url: string | null;
   created_at: string;
+  updated_at: string;
   author?: {
     username: string;
     avatar_url: string | null;
@@ -67,28 +68,7 @@ export function useChannels() {
     fetchChannels();
   }, [fetchChannels]);
 
-  const createChannel = async (name: string, description: string, avatarUrl: string | null) => {
-    if (!user) return null;
-
-    const { data: ch } = await supabase
-      .from("channels")
-      .insert({ name, description, avatar_url: avatarUrl, created_by: user.id })
-      .select()
-      .single();
-
-    if (!ch) return null;
-
-    await supabase.from("channel_members").insert({
-      channel_id: ch.id,
-      user_id: user.id,
-      role: "admin",
-    });
-
-    fetchChannels();
-    return ch.id;
-  };
-
-  return { channels, loading, fetchChannels, createChannel };
+  return { channels, loading, fetchChannels };
 }
 
 export function useChannelPosts(channelId: string | null) {
