@@ -5,11 +5,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import MessageInput from "./MessageInput";
 import MessageBubble from "./MessageBubble";
 import ForwardMessageDialog from "./ForwardMessageDialog";
+import CallOverlay from "./CallOverlay";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, MessageSquare, Search, X } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
+import { useWebRTC } from "@/hooks/useWebRTC";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
@@ -21,6 +23,7 @@ export default function ChatArea({ conversation }: Props) {
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
   const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
+  const webrtc = useWebRTC(conversation?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null);
   const [forwardMsg, setForwardMsg] = useState<MessageWithSender | null>(null);
@@ -60,7 +63,22 @@ export default function ChatArea({ conversation }: Props) {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-background h-full">
+    <div className="flex-1 flex flex-col bg-background h-full relative">
+      {/* Call Overlay */}
+      <CallOverlay
+        callState={webrtc.callState}
+        callType={webrtc.callType}
+        localStream={webrtc.localStream}
+        remoteStream={webrtc.remoteStream}
+        incomingCall={webrtc.incomingCall}
+        onAccept={webrtc.acceptCall}
+        onReject={webrtc.rejectCall}
+        onEnd={webrtc.endCall}
+        onToggleMute={webrtc.toggleMute}
+        onToggleVideo={webrtc.toggleVideo}
+        chatName={chatName}
+      />
+
       {/* Header */}
       <div className="h-16 border-b border-border flex items-center justify-between px-4 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
@@ -79,9 +97,25 @@ export default function ChatArea({ conversation }: Props) {
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => { setSearchOpen(!searchOpen); setSearchQuery(""); }}>
             <Search className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Phone className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><Video className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground"><MoreVertical className="w-4 h-4" /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-duke-online"
+            onClick={() => webrtc.startCall("audio", conversation.type === "direct" ? conversation.other_user?.user_id : undefined)}
+          >
+            <Phone className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-primary"
+            onClick={() => webrtc.startCall("video", conversation.type === "direct" ? conversation.other_user?.user_id : undefined)}
+          >
+            <Video className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+            <MoreVertical className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -89,13 +123,7 @@ export default function ChatArea({ conversation }: Props) {
       {searchOpen && (
         <div className="px-4 py-2 border-b border-border bg-card/30 flex items-center gap-2">
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-          <Input
-            placeholder="Поиск сообщений..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-muted border-0 h-8 text-sm"
-            autoFocus
-          />
+          <Input placeholder="Поиск сообщений..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-muted border-0 h-8 text-sm" autoFocus />
           <span className="text-xs text-muted-foreground whitespace-nowrap">{filteredMessages.length} найдено</span>
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground flex-shrink-0" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
             <X className="w-4 h-4" />
