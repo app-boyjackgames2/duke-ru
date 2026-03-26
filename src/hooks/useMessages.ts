@@ -164,5 +164,5 @@ export function useMessages(conversationId: string | null) {
     );
   }, [user, conversationId]);
 
-  return { messages, loading, sendMessage, deleteMessage, toggleReaction, fetchMessages, markAsRead };
+  return { messages, loading, sendMessage, deleteMessage, editMessage, toggleReaction, fetchMessages, markAsRead };
 }
