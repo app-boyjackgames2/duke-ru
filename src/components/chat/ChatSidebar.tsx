@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, LogOut, Settings, MessageSquare, Users } from "lucide-react";
+import { Search, Plus, LogOut, Settings, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,6 +16,7 @@ import NewChatDialog from "./NewChatDialog";
 import CreateGroupDialog from "./CreateGroupDialog";
 import ChannelList from "../channels/ChannelList";
 import { useNavigate } from "react-router-dom";
+import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
   conversations: ConversationWithDetails[];
@@ -46,9 +47,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       {/* Header */}
       <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg duke-gradient flex items-center justify-center">
-            <MessageSquare className="w-4 h-4 text-primary-foreground" />
-          </div>
+          <img src={dukeIcon} alt="DUKE" className="w-8 h-8 rounded-lg" />
           <span className="font-bold text-foreground tracking-tight">DUKE</span>
         </div>
         <div className="flex items-center gap-1">
@@ -71,31 +70,18 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       <div className="p-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-muted border-0 h-9 text-sm"
-          />
+          <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-muted border-0 h-9 text-sm" />
         </div>
       </div>
 
       {/* Channels */}
-      <ChannelList
-        channels={channels}
-        activeId={activeType === "channel" ? activeId : null}
-        onSelect={onSelectChannel}
-        onRefresh={onRefreshChannels}
-      />
+      <ChannelList channels={channels} activeId={activeType === "channel" ? activeId : null} onSelect={onSelectChannel} onRefresh={onRefreshChannels} />
 
       <Separator className="mx-3" />
 
-      {/* Conversations list */}
+      {/* Conversations */}
       <div className="flex items-center px-3 py-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-          <MessageSquare className="w-3.5 h-3.5" />
-          Чаты
-        </span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">💬 Чаты</span>
       </div>
       <ScrollArea className="flex-1 scrollbar-thin">
         <div className="px-2 pb-2">
@@ -109,35 +95,23 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
               <button
                 key={conv.id}
                 onClick={() => onSelectChat(conv.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-0.5 transition-colors text-left ${
-                  isActive
-                    ? "bg-primary/10 border border-primary/20 duke-glow-sm"
-                    : "hover:bg-muted"
-                }`}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-0.5 transition-colors text-left ${isActive ? "bg-primary/10 border border-primary/20 duke-glow-sm" : "hover:bg-muted"}`}
               >
                 <div className="relative flex-shrink-0">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={conv.type === "direct" ? conv.other_user?.avatar_url || "" : conv.avatar_url || ""} />
-                    <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">
-                      {name[0]?.toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{name[0]?.toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  {isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-duke-online rounded-full border-2 border-card" />
-                  )}
+                  {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-duke-online rounded-full border-2 border-card" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>
-                      {name}
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {conv.last_message && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
-                        </span>
-                      )}
-                    </div>
+                    <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{name}</span>
+                    {conv.last_message && (
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
                     {conv.last_message && (
@@ -167,9 +141,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       <div className="p-3 border-t border-border flex items-center gap-3">
         <Avatar className="h-8 w-8">
           <AvatarImage src={profile?.avatar_url || ""} />
-          <AvatarFallback className="bg-primary/20 text-primary text-xs">
-            {profile?.username?.[0]?.toUpperCase() || "?"}
-          </AvatarFallback>
+          <AvatarFallback className="bg-primary/20 text-primary text-xs">{profile?.username?.[0]?.toUpperCase() || "?"}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground truncate">{profile?.username || "Загрузка..."}</p>
@@ -181,10 +153,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       <CreateGroupDialog
         open={showNewGroup}
         onOpenChange={setShowNewGroup}
-        onCreated={(id) => {
-          onRefreshConversations?.();
-          onSelectChat(id);
-        }}
+        onCreated={(id) => { onRefreshConversations?.(); onSelectChat(id); }}
       />
     </div>
   );

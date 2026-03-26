@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { MessageSquare, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
+import dukeIcon from "@/assets/duke-icon.jpeg";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -40,9 +41,9 @@ export default function Login() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl duke-gradient duke-glow mb-4"
+            className="inline-block mb-4"
           >
-            <MessageSquare className="w-8 h-8 text-primary-foreground" />
+            <img src={dukeIcon} alt="DUKE" className="w-20 h-20 rounded-2xl duke-glow" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">DUKE</h1>
           <p className="text-muted-foreground mt-1">Войдите в свой аккаунт</p>
