@@ -5,7 +5,18 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import InviteToChannelDialog from "./InviteToChannelDialog";
@@ -25,6 +36,24 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [showInvite, setShowInvite] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const isCreator = user?.id === channel.created_by;
+
+  const handleDeleteChannel = async () => {
+    setDeleting(true);
+    // Delete posts, members, then channel
+    await supabase.from("channel_posts").delete().eq("channel_id", channel.id);
+    await supabase.from("channel_members").delete().eq("channel_id", channel.id);
+    const { error } = await supabase.from("channels").delete().eq("id", channel.id);
+    if (error) {
+      toast.error("Не удалось удалить канал: " + error.message);
+      setDeleting(false);
+    } else {
+      toast.success("Канал удалён");
+      onRefresh?.();
+    }
+  };
 
   const handlePost = async () => {
     if (!newPost.trim()) return;
@@ -68,9 +97,32 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             <p className="text-xs text-muted-foreground">{channel.member_count} участников</p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowInvite(true)}>
-          <UserPlus className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowInvite(true)}>
+            <UserPlus className="w-4 h-4" />
+          </Button>
+          {isCreator && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Удалить канал «{channel.name}»?</AlertDialogTitle>
+                  <AlertDialogDescription>Это действие нельзя отменить. Все посты и участники будут удалены.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteChannel} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Удалить"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       {/* Posts */}

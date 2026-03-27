@@ -28,7 +28,7 @@ export default function Index() {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/welcome" replace />;
 
   const activeConversation = activeType === "chat" ? conversations.find((c) => c.id === activeId) || null : null;
   const activeChannel = activeType === "channel" ? channels.find((c) => c.id === activeId) || null : null;
