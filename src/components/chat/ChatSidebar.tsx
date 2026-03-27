@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, LogOut, Settings, Users } from "lucide-react";
+import { Search, Plus, LogOut, Settings, Users, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,9 +27,10 @@ interface Props {
   onSelectChannel: (id: string) => void;
   onRefreshChannels?: () => void;
   onRefreshConversations?: () => void;
+  activeCallConversationId?: string | null;
 }
 
-export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel, onRefreshChannels, onRefreshConversations }: Props) {
+export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel, onRefreshChannels, onRefreshConversations, activeCallConversationId }: Props) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
   const [search, setSearch] = useState("");
@@ -90,6 +91,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
             const isActive = activeType === "chat" && conv.id === activeId;
             const isOnline = conv.type === "direct" && conv.other_user?.is_online;
             const unread = conv.unread_count || 0;
+            const isInCall = activeCallConversationId === conv.id;
 
             return (
               <button
@@ -107,6 +109,12 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{name}</span>
+                    {isInCall && (
+                      <span className="flex items-center gap-1 ml-1 flex-shrink-0">
+                        <Phone className="w-3 h-3 text-duke-online animate-pulse" />
+                        <span className="text-[10px] text-duke-online font-medium">В звонке</span>
+                      </span>
+                    )}
                     {conv.last_message && (
                       <span className="text-xs text-muted-foreground flex-shrink-0">
                         {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
