@@ -30,7 +30,6 @@ export function useNotifications() {
           const msg = payload.new as any;
           if (msg.sender_id === user.id) return;
 
-          // Check if user is a member of this conversation
           const { data: membership } = await supabase
             .from("conversation_members")
             .select("id")
@@ -52,10 +51,8 @@ export function useNotifications() {
                        msg.type === "file" ? "📎 Файл" :
                        msg.content || "";
 
-          // Toast notification (always)
           toast(senderName, { description: body });
 
-          // Browser notification (if tab not focused)
           if (document.hidden && permissionRef.current === "granted") {
             new Notification(`DUKE — ${senderName}`, { body, icon: "/favicon.ico" });
           }
@@ -102,9 +99,53 @@ export function useNotifications() {
       )
       .subscribe();
 
+    // Listen for incoming calls via call_history inserts
+    const callChannel = supabase
+      .channel("notif-calls")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "call_history" },
+        async (payload) => {
+          const call = payload.new as any;
+          if (call.caller_id === user.id) return;
+
+          // Check if user is member of this conversation
+          const { data: membership } = await supabase
+            .from("conversation_members")
+            .select("id")
+            .eq("conversation_id", call.conversation_id)
+            .eq("user_id", user.id)
+            .single();
+
+          if (!membership) return;
+
+          const { data: caller } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("user_id", call.caller_id)
+            .single();
+
+          const callerName = caller?.username || "Пользователь";
+          const callTypeLabel = call.call_type === "video" ? "📹 Видеозвонок" : "📞 Аудиозвонок";
+
+          toast(`${callTypeLabel} от ${callerName}`, { description: "Входящий звонок", duration: 10000 });
+
+          if (permissionRef.current === "granted") {
+            new Notification(`DUKE — ${callTypeLabel}`, {
+              body: `Входящий звонок от ${callerName}`,
+              icon: "/favicon.ico",
+              tag: "incoming-call",
+              requireInteraction: true,
+            });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(msgChannel);
       supabase.removeChannel(postChannel);
+      supabase.removeChannel(callChannel);
     };
   }, [user]);
 }

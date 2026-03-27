@@ -6,8 +6,9 @@ import MessageInput from "./MessageInput";
 import MessageBubble from "./MessageBubble";
 import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
+import CallHistoryPanel from "./CallHistoryPanel";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, Search, X } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
@@ -30,6 +31,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [forwardMsg, setForwardMsg] = useState<MessageWithSender | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCallHistory, setShowCallHistory] = useState(false);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -123,6 +125,9 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
           >
             <Video className="w-4 h-4" />
           </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setShowCallHistory(!showCallHistory)} title="История звонков">
+            <History className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
             <MoreVertical className="w-4 h-4" />
           </Button>
@@ -138,6 +143,13 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground flex-shrink-0" onClick={() => { setSearchOpen(false); setSearchQuery(""); }}>
             <X className="w-4 h-4" />
           </Button>
+        </div>
+      )}
+
+      {/* Call History */}
+      {showCallHistory && conversation && (
+        <div className="border-b border-border bg-card/30 max-h-52 overflow-y-auto scrollbar-thin">
+          <CallHistoryPanel conversationId={conversation.id} currentUserId={user?.id || ""} />
         </div>
       )}
 
