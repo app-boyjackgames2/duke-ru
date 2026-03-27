@@ -24,10 +24,14 @@ export function useWebRTC(conversationId: string | null) {
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const callHistoryIdRef = useRef<string | null>(null);
+  const callStartTimeRef = useRef<Date | null>(null);
 
   const ICE_SERVERS: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "turn:a.relay.metered.ca:80", username: "e8dd65b92f6abe3c4c5b5e95", credential: "FJvb0fNi+qPW7WMa" },
+    { urls: "turn:a.relay.metered.ca:443?transport=tcp", username: "e8dd65b92f6abe3c4c5b5e95", credential: "FJvb0fNi+qPW7WMa" },
   ];
 
   const createPeerConnection = useCallback(() => {
@@ -123,16 +127,37 @@ export function useWebRTC(conversationId: string | null) {
     });
   };
 
+  const insertCallHistory = async (type: "audio" | "video", status: string) => {
+    if (!user || !conversationId) return null;
+    const { data, error } = await supabase
+      .from("call_history")
+      .insert({ conversation_id: conversationId, caller_id: user.id, call_type: type, status })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("Failed to insert call history:", error);
+      return null;
+    }
+    return data?.id || null;
+  };
+
+  const updateCallHistory = async (id: string, updates: Record<string, any>) => {
+    if (!id) return;
+    await supabase.from("call_history").update(updates).eq("id", id);
+  };
+
   const startCall = async (type: "audio" | "video", targetUserId?: string) => {
     if (!user || !conversationId || !channelRef.current) return;
 
     setCallType(type);
     setCallState("calling");
 
+    const historyId = await insertCallHistory(type, "calling");
+    callHistoryIdRef.current = historyId;
+
     const stream = await getMediaStream(type);
     setLocalStream(stream);
 
-    // Send call request
     channelRef.current.send({
       type: "broadcast",
       event: "webrtc-signal",
@@ -170,6 +195,10 @@ export function useWebRTC(conversationId: string | null) {
     });
 
     setCallState("connected");
+    callStartTimeRef.current = new Date();
+    if (callHistoryIdRef.current) {
+      updateCallHistory(callHistoryIdRef.current, { status: "connected" });
+    }
   };
 
   const acceptCall = async () => {
@@ -192,6 +221,7 @@ export function useWebRTC(conversationId: string | null) {
 
     setIncomingCall(null);
     setCallState("connected");
+    callStartTimeRef.current = new Date();
   };
 
   const rejectCall = () => {
@@ -252,6 +282,21 @@ export function useWebRTC(conversationId: string | null) {
   };
 
   const endCall = useCallback(() => {
+    // Update call history with duration
+    if (callHistoryIdRef.current) {
+      const now = new Date();
+      const duration = callStartTimeRef.current
+        ? Math.round((now.getTime() - callStartTimeRef.current.getTime()) / 1000)
+        : 0;
+      updateCallHistory(callHistoryIdRef.current, {
+        ended_at: now.toISOString(),
+        duration_seconds: duration,
+        status: callStartTimeRef.current ? "completed" : "missed",
+      });
+      callHistoryIdRef.current = null;
+      callStartTimeRef.current = null;
+    }
+
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;

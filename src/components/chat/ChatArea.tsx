@@ -16,9 +16,10 @@ import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
   conversation: ConversationWithDetails | null;
+  onCallStateChange?: (conversationId: string | null) => void;
 }
 
-export default function ChatArea({ conversation }: Props) {
+export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const { user } = useAuth();
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
@@ -37,6 +38,15 @@ export default function ChatArea({ conversation }: Props) {
   useEffect(() => {
     if (conversation?.id && messages.length > 0) markAsRead();
   }, [conversation?.id, messages.length, markAsRead]);
+
+  // Notify parent about call state changes
+  useEffect(() => {
+    if (webrtc.callState === "connected" || webrtc.callState === "calling") {
+      onCallStateChange?.(conversation?.id || null);
+    } else if (webrtc.callState === "idle" || webrtc.callState === "ended") {
+      onCallStateChange?.(null);
+    }
+  }, [webrtc.callState, conversation?.id, onCallStateChange]);
 
   const filteredMessages = searchQuery
     ? messages.filter((m) => m.content?.toLowerCase().includes(searchQuery.toLowerCase()))

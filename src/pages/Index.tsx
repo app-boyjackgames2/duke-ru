@@ -15,6 +15,7 @@ export default function Index() {
   const { channels, loading: channelsLoading, fetchChannels } = useChannels();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<"chat" | "channel">("chat");
+  const [activeCallConversationId, setActiveCallConversationId] = useState<string | null>(null);
 
   // Enable notifications
   useNotifications();
@@ -43,11 +44,12 @@ export default function Index() {
         onSelectChannel={(id) => { setActiveId(id); setActiveType("channel"); }}
         onRefreshChannels={fetchChannels}
         onRefreshConversations={fetchConversations}
+        activeCallConversationId={activeCallConversationId}
       />
       {activeType === "channel" && activeChannel ? (
         <ChannelView channel={activeChannel} onRefresh={fetchChannels} />
       ) : (
-        <ChatArea conversation={activeConversation} />
+        <ChatArea conversation={activeConversation} onCallStateChange={setActiveCallConversationId} />
       )}
     </div>
   );

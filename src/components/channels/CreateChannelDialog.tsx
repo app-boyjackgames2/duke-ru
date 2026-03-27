@@ -61,7 +61,8 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
         .single();
 
       if (chErr || !ch) {
-        toast.error("Ошибка создания канала");
+        console.error("Channel creation error:", chErr);
+        toast.error(`Ошибка создания канала: ${chErr?.message || "неизвестная ошибка"}`);
         setCreating(false);
         return;
       }
@@ -73,7 +74,8 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
       });
 
       if (memErr) {
-        toast.error("Канал создан, но не удалось добавить вас как участника");
+        console.error("Channel member insert error:", memErr);
+        toast.error(`Канал создан, но не удалось добавить вас: ${memErr.message}`);
       } else {
         toast.success("Канал создан!");
       }
