@@ -131,6 +131,21 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
               className="bg-muted border-0 resize-none h-20 text-sm"
             />
           </div>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs">Тип доступа</Label>
+            <div className="flex gap-2">
+              {([["open", "Открытый"], ["link", "По ссылке"], ["restricted", "Ограниченный"]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setAccessType(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${accessType === val ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button
             className="w-full duke-gradient"
             disabled={!name.trim() || creating}
