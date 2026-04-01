@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle, Paperclip, FileText, Download } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
