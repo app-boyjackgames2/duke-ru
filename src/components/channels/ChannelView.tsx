@@ -37,6 +37,9 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCreator = user?.id === channel.created_by;
 
