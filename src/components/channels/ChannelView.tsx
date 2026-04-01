@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ChannelWithDetails, useChannelPosts } from "@/hooks/useChannels";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle, Paperclip, FileText, Download } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,9 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCreator = user?.id === channel.created_by;
 
@@ -56,10 +59,38 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   };
 
   const handlePost = async () => {
-    if (!newPost.trim()) return;
+    if (!newPost.trim() && !attachedFile) return;
     setSending(true);
-    await createPost(newPost.trim());
+
+    let fileUrl: string | undefined;
+    let fileName: string | undefined;
+    let imageUrl: string | undefined;
+
+    if (attachedFile) {
+      setUploading(true);
+      const ext = attachedFile.name.split(".").pop();
+      const path = `channels/${channel.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("chat-attachments").upload(path, attachedFile);
+      if (error) {
+        toast.error("Ошибка загрузки файла");
+        setSending(false);
+        setUploading(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
+      const isImage = attachedFile.type.startsWith("image/");
+      if (isImage) {
+        imageUrl = urlData.publicUrl;
+      } else {
+        fileUrl = urlData.publicUrl;
+        fileName = attachedFile.name;
+      }
+      setUploading(false);
+    }
+
+    await createPost(newPost.trim() || (fileName || "Файл"), imageUrl, fileUrl, fileName);
     setNewPost("");
+    setAttachedFile(null);
     setSending(false);
   };
 
@@ -188,6 +219,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                 )}
 
                 {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
+                {(post as any).file_url && !(post as any).image_url && (
+                  <a href={(post as any).file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                    <FileText className="w-4 h-4" />
+                    {(post as any).file_name || "Файл"}
+                    <Download className="w-3 h-3" />
+                  </a>
+                )}
               </div>
             );
           })
@@ -196,7 +234,30 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
       {/* Post input */}
       <div className="border-t border-border bg-card/50 backdrop-blur-sm p-3">
+        {attachedFile && (
+          <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
+            <Paperclip className="w-3.5 h-3.5" />
+            <span className="truncate flex-1">{attachedFile.name}</span>
+            <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                if (f.size > 50 * 1024 * 1024) { toast.error("Максимальный размер файла — 50 МБ"); return; }
+                setAttachedFile(f);
+              }
+              e.target.value = "";
+            }}
+          />
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
+            <Paperclip className="w-4 h-4" />
+          </Button>
           <Textarea
             placeholder="Написать публикацию..."
             value={newPost}
@@ -204,8 +265,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             className="bg-muted border-0 resize-none h-10 min-h-[40px] text-sm flex-1"
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePost(); } }}
           />
-          <Button size="icon" className="h-10 w-10 duke-gradient flex-shrink-0" onClick={handlePost} disabled={!newPost.trim() || sending}>
-            <Send className="w-4 h-4" />
+          <Button size="icon" className="h-10 w-10 duke-gradient flex-shrink-0" onClick={handlePost} disabled={(!newPost.trim() && !attachedFile) || sending || uploading}>
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>

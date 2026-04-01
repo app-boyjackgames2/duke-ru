@@ -5,8 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+function renderTextWithMentions(text: string) {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (/^@\w+$/.test(part)) {
+      const name = part.slice(1);
+      return (
+        <Link key={i} to={`/channel/${name}`} className="text-primary font-medium hover:underline">
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
+}
 
 interface Props {
   message: MessageWithSender;
@@ -77,7 +93,7 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
         </a>
       );
     }
-    return <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>;
+    return <p className="text-sm whitespace-pre-wrap break-words">{renderTextWithMentions(message.content || "")}</p>;
   };
 
   return (

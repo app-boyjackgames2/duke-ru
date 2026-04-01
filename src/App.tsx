@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ChannelPage from "./pages/ChannelPage";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/channel/:channelName" element={<ChannelPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

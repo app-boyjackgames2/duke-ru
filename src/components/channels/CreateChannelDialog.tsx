@@ -21,12 +21,14 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
   const [description, setDescription] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [accessType, setAccessType] = useState<"open" | "link" | "restricted">("open");
   const [creating, setCreating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setName("");
     setDescription("");
+    setAccessType("open");
     setAvatarFile(null);
     setAvatarPreview(null);
   };
@@ -56,7 +58,7 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
 
       const { data: ch, error: chErr } = await supabase
         .from("channels")
-        .insert({ name: name.trim(), description: description.trim(), avatar_url: avatarUrl, created_by: user.id })
+        .insert({ name: name.trim(), description: description.trim(), avatar_url: avatarUrl, created_by: user.id, access_type: accessType })
         .select()
         .single();
 
@@ -128,6 +130,21 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
               onChange={(e) => setDescription(e.target.value)}
               className="bg-muted border-0 resize-none h-20 text-sm"
             />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-muted-foreground text-xs">Тип доступа</Label>
+            <div className="flex gap-2">
+              {([["open", "Открытый"], ["link", "По ссылке"], ["restricted", "Ограниченный"]] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setAccessType(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${accessType === val ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <Button
             className="w-full duke-gradient"

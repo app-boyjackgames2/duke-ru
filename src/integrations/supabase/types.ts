@@ -85,6 +85,8 @@ export type Database = {
           channel_id: string
           content: string
           created_at: string
+          file_name: string | null
+          file_url: string | null
           id: string
           image_url: string | null
           updated_at: string
@@ -94,6 +96,8 @@ export type Database = {
           channel_id: string
           content: string
           created_at?: string
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           image_url?: string | null
           updated_at?: string
@@ -103,6 +107,8 @@ export type Database = {
           channel_id?: string
           content?: string
           created_at?: string
+          file_name?: string | null
+          file_url?: string | null
           id?: string
           image_url?: string | null
           updated_at?: string
@@ -119,6 +125,7 @@ export type Database = {
       }
       channels: {
         Row: {
+          access_type: string
           avatar_url: string | null
           created_at: string
           created_by: string
@@ -128,6 +135,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_type?: string
           avatar_url?: string | null
           created_at?: string
           created_by: string
@@ -137,6 +145,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_type?: string
           avatar_url?: string | null
           created_at?: string
           created_by?: string
