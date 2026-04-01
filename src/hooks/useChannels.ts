@@ -119,13 +119,15 @@ export function useChannelPosts(channelId: string | null) {
     return () => { supabase.removeChannel(channel); };
   }, [channelId, fetchPosts]);
 
-  const createPost = async (content: string, imageUrl?: string) => {
+  const createPost = async (content: string, imageUrl?: string, fileUrl?: string, fileName?: string) => {
     if (!user || !channelId) return;
     await supabase.from("channel_posts").insert({
       channel_id: channelId,
       author_id: user.id,
       content,
       image_url: imageUrl || null,
+      file_url: fileUrl || null,
+      file_name: fileName || null,
     });
   };
 
