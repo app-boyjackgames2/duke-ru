@@ -78,7 +78,7 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
         </a>
       );
     }
-    return <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>;
+    return <p className="text-sm whitespace-pre-wrap break-words">{renderTextWithMentions(message.content || "")}</p>;
   };
 
   return (
