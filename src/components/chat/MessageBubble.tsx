@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import { useState } from "react";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 

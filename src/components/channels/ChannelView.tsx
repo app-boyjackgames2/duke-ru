@@ -234,7 +234,30 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
       {/* Post input */}
       <div className="border-t border-border bg-card/50 backdrop-blur-sm p-3">
+        {attachedFile && (
+          <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
+            <Paperclip className="w-3.5 h-3.5" />
+            <span className="truncate flex-1">{attachedFile.name}</span>
+            <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                if (f.size > 50 * 1024 * 1024) { toast.error("Максимальный размер файла — 50 МБ"); return; }
+                setAttachedFile(f);
+              }
+              e.target.value = "";
+            }}
+          />
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-foreground flex-shrink-0" onClick={() => fileInputRef.current?.click()}>
+            <Paperclip className="w-4 h-4" />
+          </Button>
           <Textarea
             placeholder="Написать публикацию..."
             value={newPost}
@@ -242,8 +265,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             className="bg-muted border-0 resize-none h-10 min-h-[40px] text-sm flex-1"
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handlePost(); } }}
           />
-          <Button size="icon" className="h-10 w-10 duke-gradient flex-shrink-0" onClick={handlePost} disabled={!newPost.trim() || sending}>
-            <Send className="w-4 h-4" />
+          <Button size="icon" className="h-10 w-10 duke-gradient flex-shrink-0" onClick={handlePost} disabled={(!newPost.trim() && !attachedFile) || sending || uploading}>
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </div>
