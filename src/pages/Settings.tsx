@@ -21,6 +21,7 @@ export default function Settings() {
   const [initialized, setInitialized] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   if (authLoading || loading) {
     return (
