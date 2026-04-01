@@ -9,6 +9,21 @@ import { Link } from "react-router-dom";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
+function renderTextWithMentions(text: string) {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (/^@\w+$/.test(part)) {
+      const name = part.slice(1);
+      return (
+        <Link key={i} to={`/channel/${name}`} className="text-primary font-medium hover:underline">
+          {part}
+        </Link>
+      );
+    }
+    return part;
+  });
+}
+
 interface Props {
   message: MessageWithSender;
   isMine: boolean;
