@@ -21,6 +21,7 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
   const [description, setDescription] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [accessType, setAccessType] = useState<"open" | "link" | "restricted">("open");
   const [creating, setCreating] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
