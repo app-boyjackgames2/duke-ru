@@ -2,11 +2,12 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, Camera, Loader2 } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, Sun, Moon, Monitor } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
@@ -20,6 +21,7 @@ export default function Settings() {
   const [initialized, setInitialized] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
 
   if (authLoading || loading) {
     return (
@@ -95,6 +97,36 @@ export default function Settings() {
           <Button onClick={handleSave} className="w-full duke-gradient" disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Сохранить"}
           </Button>
+
+          <div className="space-y-2 pt-4 border-t border-border">
+            <Label>Тема</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={theme === "dark" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("dark")}
+                className="flex-1"
+              >
+                <Moon className="w-4 h-4 mr-1" /> Тёмная
+              </Button>
+              <Button
+                variant={theme === "light" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("light")}
+                className="flex-1"
+              >
+                <Sun className="w-4 h-4 mr-1" /> Светлая
+              </Button>
+              <Button
+                variant={theme === "system" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("system")}
+                className="flex-1"
+              >
+                <Monitor className="w-4 h-4 mr-1" /> Авто
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
