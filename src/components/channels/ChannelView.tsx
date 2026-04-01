@@ -59,10 +59,38 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   };
 
   const handlePost = async () => {
-    if (!newPost.trim()) return;
+    if (!newPost.trim() && !attachedFile) return;
     setSending(true);
-    await createPost(newPost.trim());
+
+    let fileUrl: string | undefined;
+    let fileName: string | undefined;
+    let imageUrl: string | undefined;
+
+    if (attachedFile) {
+      setUploading(true);
+      const ext = attachedFile.name.split(".").pop();
+      const path = `channels/${channel.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("chat-attachments").upload(path, attachedFile);
+      if (error) {
+        toast.error("Ошибка загрузки файла");
+        setSending(false);
+        setUploading(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
+      const isImage = attachedFile.type.startsWith("image/");
+      if (isImage) {
+        imageUrl = urlData.publicUrl;
+      } else {
+        fileUrl = urlData.publicUrl;
+        fileName = attachedFile.name;
+      }
+      setUploading(false);
+    }
+
+    await createPost(newPost.trim() || (fileName || "Файл"), imageUrl, fileUrl, fileName);
     setNewPost("");
+    setAttachedFile(null);
     setSending(false);
   };
 
