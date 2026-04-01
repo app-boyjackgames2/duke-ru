@@ -28,6 +28,7 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
   const reset = () => {
     setName("");
     setDescription("");
+    setAccessType("open");
     setAvatarFile(null);
     setAvatarPreview(null);
   };
