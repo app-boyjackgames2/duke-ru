@@ -1,84 +1,39 @@
 
 
-# DUKE — Update 27.03.2026
+# DUKE — Светлая/тёмная тема + публикация
 
-## 1. TURN Server Support for WebRTC
+## Что будет сделано
 
-**File**: `src/hooks/useWebRTC.ts`
+### 1. Светлая тема в CSS
+**Файл**: `src/index.css`
 
-Add a free TURN server (e.g. from metered.ca or OpenRelay) alongside existing STUN servers in `ICE_SERVERS` config. This ensures calls work behind restrictive NATs.
+Текущие CSS-переменные (`:root`) — это тёмная тема. Добавим блок `.light` с светлыми значениями всех переменных (белый фон, тёмный текст, приглушённые акценты). Тёмная тема останется по умолчанию в `:root`.
 
-```ts
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-  { urls: "turn:a]relay.metered.ca:80", username: "open", credential: "open" },
-  { urls: "turn:a.relay.metered.ca:443?transport=tcp", username: "open", credential: "open" },
-];
-```
+### 2. Переключатель темы в настройках
+**Файл**: `src/pages/Settings.tsx`
 
-For production, a paid TURN service with secret credentials would be needed, but for MVP the free relay works.
+Добавим секцию «Тема» с тремя кнопками: **Тёмная / Светлая / Системная**. Выбор сохраняется в `localStorage`. При загрузке класс `light` добавляется/убирается на `<html>`.
 
-## 2. Call Status Display in Sidebar
+### 3. Хук useTheme
+**Новый файл**: `src/hooks/useTheme.ts`
 
-**File**: `src/components/chat/ChatSidebar.tsx`
+- Читает тему из `localStorage` (ключ `duke-theme`)
+- Значения: `dark` | `light` | `system`
+- Применяет/убирает класс `light` на `document.documentElement`
+- Слушает `prefers-color-scheme` для режима `system`
 
-- Accept a new prop `activeCallConversationId: string | null` from `Index.tsx`
-- When a conversation matches the active call, show a pulsing green phone icon badge next to it
-- Small "В звонке" label under the conversation name
+### 4. Инициализация темы
+**Файл**: `src/main.tsx`
 
-**File**: `src/pages/Index.tsx`
-- Track `activeCallConversationId` state, set it when a call starts/ends from `useWebRTC`
+Добавим inline-скрипт или вызов в `main.tsx`, чтобы тема применялась до рендера (избежать мерцания).
 
-## 3. Call History
+### 5. Публикация
+После реализации — нажать кнопку «Publish» → «Update» для публикации на https://duke-ru.lovable.app.
 
-**Database migration**: New `call_history` table:
-```sql
-CREATE TABLE public.call_history (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id uuid NOT NULL,
-  caller_id uuid NOT NULL,
-  call_type text NOT NULL DEFAULT 'audio',
-  started_at timestamptz NOT NULL DEFAULT now(),
-  ended_at timestamptz,
-  duration_seconds integer,
-  status text NOT NULL DEFAULT 'missed'
-);
-ALTER TABLE public.call_history ENABLE ROW LEVEL SECURITY;
--- RLS: members of conversation can view
-CREATE POLICY "Members can view call history" ON public.call_history
-  FOR SELECT TO authenticated
-  USING (is_conversation_member(auth.uid(), conversation_id));
--- Authenticated can insert
-CREATE POLICY "Authenticated can insert call history" ON public.call_history
-  FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = caller_id);
--- Caller can update (to set ended_at)
-CREATE POLICY "Caller can update call history" ON public.call_history
-  FOR UPDATE TO authenticated
-  USING (auth.uid() = caller_id);
-```
-
-**File**: `src/hooks/useWebRTC.ts`
-- On `startCall`: insert a record into `call_history` with status `calling`
-- On `connected`: update status to `connected`
-- On `endCall`: update `ended_at` and calculate `duration_seconds`
-- On `rejectCall`: update status to `missed`
-
-**File**: `src/components/chat/ChatArea.tsx`
-- Add a small call history section (or button to toggle it) showing recent calls for the current conversation with timestamps, duration, and missed/completed status
-
-## 4. Channel Creation Stability (Fix)
-
-**File**: `src/components/channels/CreateChannelDialog.tsx`
-- Current code looks correct; verify the `onCreated` callback is properly wired
-- Add better error logging to surface the actual Supabase error message in toast
-
-## Implementation Order
-1. Database migration for `call_history`
-2. TURN server config in `useWebRTC.ts`
-3. Call history insert/update logic in `useWebRTC.ts`
-4. Call status badge in `ChatSidebar.tsx` + `Index.tsx` state
-5. Call history UI in `ChatArea.tsx`
-6. Channel creation error fix
+## Порядок реализации
+1. Добавить светлые CSS-переменные в `index.css`
+2. Создать `useTheme.ts`
+3. Подключить в `main.tsx`
+4. Добавить переключатель в `Settings.tsx`
+5. Опубликовать
 
