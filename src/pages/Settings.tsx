@@ -97,6 +97,36 @@ export default function Settings() {
           <Button onClick={handleSave} className="w-full duke-gradient" disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Сохранить"}
           </Button>
+
+          <div className="space-y-2 pt-4 border-t border-border">
+            <Label>Тема</Label>
+            <div className="flex gap-2">
+              <Button
+                variant={theme === "dark" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("dark")}
+                className="flex-1"
+              >
+                <Moon className="w-4 h-4 mr-1" /> Тёмная
+              </Button>
+              <Button
+                variant={theme === "light" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("light")}
+                className="flex-1"
+              >
+                <Sun className="w-4 h-4 mr-1" /> Светлая
+              </Button>
+              <Button
+                variant={theme === "system" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setTheme("system")}
+                className="flex-1"
+              >
+                <Monitor className="w-4 h-4 mr-1" /> Авто
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
