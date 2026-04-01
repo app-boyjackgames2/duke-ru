@@ -58,7 +58,7 @@ export default function CreateChannelDialog({ open, onOpenChange, onCreated }: P
 
       const { data: ch, error: chErr } = await supabase
         .from("channels")
-        .insert({ name: name.trim(), description: description.trim(), avatar_url: avatarUrl, created_by: user.id })
+        .insert({ name: name.trim(), description: description.trim(), avatar_url: avatarUrl, created_by: user.id, access_type: accessType })
         .select()
         .single();
 
