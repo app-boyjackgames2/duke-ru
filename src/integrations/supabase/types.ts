@@ -47,6 +47,33 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_bans: {
+        Row: {
+          banned_by: string
+          channel_id: string
+          created_at: string
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          banned_by: string
+          channel_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          banned_by?: string
+          channel_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       channel_members: {
         Row: {
           channel_id: string
@@ -379,6 +406,10 @@ export type Database = {
         Returns: boolean
       }
       is_channel_member: {
+        Args: { _channel_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_channel_mod: {
         Args: { _channel_id: string; _user_id: string }
         Returns: boolean
       }

@@ -1,11 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ChannelWithDetails, useChannelPosts } from "@/hooks/useChannels";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, AlertTriangle, Paperclip, FileText, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,15 +18,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import InviteToChannelDialog from "./InviteToChannelDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
 
 interface Props {
   channel: ChannelWithDetails;
   onRefresh?: () => void;
+}
+
+interface MemberInfo {
+  id: string;
+  user_id: string;
+  role: string;
+  username: string;
+  avatar_url: string | null;
 }
 
 export default function ChannelView({ channel, onRefresh }: Props) {
@@ -34,26 +51,91 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [newPost, setNewPost] = useState("");
   const [sending, setSending] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [members, setMembers] = useState<MemberInfo[]>([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { lang } = useLanguage();
 
   const isCreator = user?.id === channel.created_by;
+  const [isMod, setIsMod] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc("is_channel_mod", { _user_id: user.id, _channel_id: channel.id })
+      .then(({ data }) => setIsMod(!!data));
+  }, [user, channel.id]);
+
+  const loadMembers = async () => {
+    setMembersLoading(true);
+    const { data } = await supabase
+      .from("channel_members")
+      .select("id, user_id, role")
+      .eq("channel_id", channel.id);
+    if (data && data.length > 0) {
+      const userIds = data.map((m) => m.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, avatar_url")
+        .in("user_id", userIds);
+      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
+      setMembers(
+        data.map((m) => ({
+          ...m,
+          username: profileMap.get(m.user_id)?.username || "?",
+          avatar_url: profileMap.get(m.user_id)?.avatar_url || null,
+        }))
+      );
+    }
+    setMembersLoading(false);
+  };
+
+  const handleToggleMod = async (memberId: string, currentRole: string) => {
+    const newRole = currentRole === "moderator" ? "member" : "moderator";
+    const { error } = await supabase
+      .from("channel_members")
+      .update({ role: newRole })
+      .eq("id", memberId);
+    if (error) toast.error(error.message);
+    else loadMembers();
+  };
+
+  const handleKick = async (memberId: string) => {
+    const { error } = await supabase
+      .from("channel_members")
+      .delete()
+      .eq("id", memberId);
+    if (error) toast.error(error.message);
+    else { loadMembers(); onRefresh?.(); }
+  };
+
+  const handleBan = async (memberUserId: string) => {
+    const { error } = await supabase
+      .from("channel_bans")
+      .insert({ channel_id: channel.id, user_id: memberUserId, banned_by: user!.id });
+    if (error) toast.error(error.message);
+    else {
+      await supabase.from("channel_members").delete().eq("channel_id", channel.id).eq("user_id", memberUserId);
+      loadMembers();
+      onRefresh?.();
+    }
+  };
 
   const handleDeleteChannel = async () => {
     setDeleting(true);
-    // Delete posts, members, then channel
     await supabase.from("channel_posts").delete().eq("channel_id", channel.id);
     await supabase.from("channel_members").delete().eq("channel_id", channel.id);
     const { error } = await supabase.from("channels").delete().eq("id", channel.id);
     if (error) {
-      toast.error("Не удалось удалить канал: " + error.message);
+      toast.error(t("delete_channel_error", lang) + ": " + error.message);
       setDeleting(false);
     } else {
-      toast.success("Канал удалён");
+      toast.success(t("channel_deleted", lang));
       onRefresh?.();
     }
   };
@@ -72,14 +154,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       const path = `channels/${channel.id}/${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("chat-attachments").upload(path, attachedFile);
       if (error) {
-        toast.error("Ошибка загрузки файла");
+        toast.error(t("file_upload_error", lang));
         setSending(false);
         setUploading(false);
         return;
       }
       const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
-      const isImage = attachedFile.type.startsWith("image/");
-      if (isImage) {
+      if (attachedFile.type.startsWith("image/")) {
         imageUrl = urlData.publicUrl;
       } else {
         fileUrl = urlData.publicUrl;
@@ -88,7 +169,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       setUploading(false);
     }
 
-    await createPost(newPost.trim() || (fileName || "Файл"), imageUrl, fileUrl, fileName);
+    await createPost(newPost.trim() || (fileName || t("file", lang)), imageUrl, fileUrl, fileName);
     setNewPost("");
     setAttachedFile(null);
     setSending(false);
@@ -96,7 +177,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
   const handleDeletePost = async (postId: string) => {
     const { error } = await supabase.from("channel_posts").delete().eq("id", postId);
-    if (error) toast.error("Не удалось удалить пост");
+    if (error) toast.error(t("post_delete_error", lang));
   };
 
   const handleEditPost = async (postId: string) => {
@@ -107,12 +188,14 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       .eq("id", postId)
       .eq("author_id", user?.id || "");
     if (error) {
-      toast.error("Не удалось обновить пост");
+      toast.error(t("post_update_error", lang));
     } else {
-      toast.success("Пост обновлён");
+      toast.success(t("post_updated", lang));
       setEditingPostId(null);
     }
   };
+
+  const canModerate = isCreator || isMod;
 
   return (
     <div className="flex-1 flex flex-col bg-background h-full">
@@ -125,10 +208,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           </Avatar>
           <div>
             <h3 className="text-sm font-semibold text-foreground">{channel.name}</h3>
-            <p className="text-xs text-muted-foreground">{channel.member_count} участников</p>
+            <p className="text-xs text-muted-foreground">{channel.member_count} {t("members_count", lang)}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setShowMembers(true); loadMembers(); }}>
+            <Users className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowInvite(true)}>
             <UserPlus className="w-4 h-4" />
           </Button>
@@ -141,13 +227,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Удалить канал «{channel.name}»?</AlertDialogTitle>
-                  <AlertDialogDescription>Это действие нельзя отменить. Все посты и участники будут удалены.</AlertDialogDescription>
+                  <AlertDialogTitle>{t("delete_channel", lang)} «{channel.name}»?</AlertDialogTitle>
+                  <AlertDialogDescription>{t("delete_channel_confirm", lang)}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Отмена</AlertDialogCancel>
+                  <AlertDialogCancel>{t("cancel", lang)}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDeleteChannel} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Удалить"}
+                    {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : t("delete", lang)}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -163,7 +249,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         ) : posts.length === 0 ? (
           <div className="text-center py-12">
             <Megaphone className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground text-sm">Пока нет публикаций</p>
+            <p className="text-muted-foreground text-sm">{t("no_posts", lang)}</p>
           </div>
         ) : (
           posts.map((post) => {
@@ -182,14 +268,16 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                     <p className="text-sm font-medium text-foreground">{post.author?.username}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(post.created_at), "d MMM, HH:mm", { locale: ru })}
-                      {isEdited && " (ред.)"}
+                      {isEdited && ` (${t("edited", lang)})`}
                     </p>
                   </div>
-                  {isAuthor && !isEditing && (
+                  {(isAuthor || canModerate) && !isEditing && (
                     <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditingPostId(post.id); setEditContent(post.content); }}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
+                      {isAuthor && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditingPostId(post.id); setEditContent(post.content); }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeletePost(post.id)}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -207,10 +295,10 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                     />
                     <div className="flex gap-1.5">
                       <Button size="sm" className="duke-gradient h-7 text-xs" onClick={() => handleEditPost(post.id)}>
-                        <Check className="w-3 h-3 mr-1" /> Сохранить
+                        <Check className="w-3 h-3 mr-1" /> {t("save", lang)}
                       </Button>
                       <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={() => setEditingPostId(null)}>
-                        <X className="w-3 h-3 mr-1" /> Отмена
+                        <X className="w-3 h-3 mr-1" /> {t("cancel", lang)}
                       </Button>
                     </div>
                   </div>
@@ -222,7 +310,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                 {(post as any).file_url && !(post as any).image_url && (
                   <a href={(post as any).file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
                     <FileText className="w-4 h-4" />
-                    {(post as any).file_name || "Файл"}
+                    {(post as any).file_name || t("file", lang)}
                     <Download className="w-3 h-3" />
                   </a>
                 )}
@@ -249,7 +337,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) {
-                if (f.size > 50 * 1024 * 1024) { toast.error("Максимальный размер файла — 50 МБ"); return; }
+                if (f.size > 50 * 1024 * 1024) { toast.error(t("file_too_large", lang)); return; }
                 setAttachedFile(f);
               }
               e.target.value = "";
@@ -259,7 +347,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             <Paperclip className="w-4 h-4" />
           </Button>
           <Textarea
-            placeholder="Написать публикацию..."
+            placeholder={t("write_post", lang)}
             value={newPost}
             onChange={(e) => setNewPost(e.target.value)}
             className="bg-muted border-0 resize-none h-10 min-h-[40px] text-sm flex-1"
@@ -272,6 +360,56 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       </div>
 
       <InviteToChannelDialog open={showInvite} onOpenChange={setShowInvite} channelId={channel.id} onInvited={onRefresh} />
+
+      {/* Members Dialog */}
+      <Dialog open={showMembers} onOpenChange={setShowMembers}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("members_list", lang)}</DialogTitle>
+          </DialogHeader>
+          {membersLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <ScrollArea className="max-h-80">
+              <div className="space-y-2">
+                {members.map((m) => {
+                  const isChannelCreator = m.user_id === channel.created_by;
+                  const isSelf = m.user_id === user?.id;
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={m.avatar_url || ""} />
+                        <AvatarFallback className="bg-secondary text-secondary-foreground text-xs">{m.username[0]?.toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{m.username}</p>
+                        <Badge variant="secondary" className="text-[10px] h-4">
+                          {isChannelCreator ? t("creator", lang) : m.role === "moderator" ? t("moderator", lang) : m.role === "admin" ? t("admin", lang) : t("member", lang)}
+                        </Badge>
+                      </div>
+                      {canModerate && !isSelf && !isChannelCreator && (
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" title={m.role === "moderator" ? t("remove_moderator", lang) : t("make_moderator", lang)} onClick={() => handleToggleMod(m.id, m.role)}>
+                            {m.role === "moderator" ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("kick", lang)} onClick={() => handleKick(m.id)}>
+                            <UserMinus className="w-3.5 h-3.5" />
+                          </Button>
+                          {isCreator && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("ban", lang)} onClick={() => handleBan(m.user_id)}>
+                              <Ban className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

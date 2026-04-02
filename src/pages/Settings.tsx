@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,7 @@ export default function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { lang, setLang } = useLanguage();
 
   if (authLoading || loading) {
     return (
@@ -42,8 +45,8 @@ export default function Settings() {
   const handleSave = async () => {
     setSaving(true);
     const { error } = await updateProfile({ username, status_text: statusText }) || {};
-    if (error) toast.error("Ошибка сохранения");
-    else toast.success("Профиль обновлён");
+    if (error) toast.error(t("save_error", lang));
+    else toast.success(t("profile_saved", lang));
     setSaving(false);
   };
 
@@ -52,20 +55,20 @@ export default function Settings() {
     if (!file || !user) return;
     const path = `${user.id}/avatar.${file.name.split(".").pop()}`;
     const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) { toast.error("Ошибка загрузки"); return; }
+    if (error) { toast.error(t("upload_error", lang)); return; }
     const { data } = supabase.storage.from("avatars").getPublicUrl(path);
     await updateProfile({ avatar_url: data.publicUrl });
-    toast.success("Аватар обновлён");
+    toast.success(t("avatar_updated", lang));
   };
 
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-md mx-auto">
         <Button variant="ghost" className="mb-6 text-muted-foreground" onClick={() => navigate("/")}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Назад
+          <ArrowLeft className="w-4 h-4 mr-2" /> {t("back", lang)}
         </Button>
 
-        <h1 className="text-2xl font-bold text-foreground mb-6">Настройки профиля</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6">{t("profile_settings", lang)}</h1>
 
         <div className="flex flex-col items-center mb-8">
           <div className="relative">
@@ -87,43 +90,40 @@ export default function Settings() {
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Имя пользователя</Label>
+            <Label>{t("username", lang)}</Label>
             <Input value={username} onChange={(e) => setUsername(e.target.value)} className="bg-card border-border" />
           </div>
           <div className="space-y-2">
-            <Label>Статус</Label>
-            <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder="Чем занимаетесь?" className="bg-card border-border" />
+            <Label>{t("status", lang)}</Label>
+            <Input value={statusText} onChange={(e) => setStatusText(e.target.value)} placeholder={t("status_placeholder", lang)} className="bg-card border-border" />
           </div>
           <Button onClick={handleSave} className="w-full duke-gradient" disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Сохранить"}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save", lang)}
           </Button>
 
           <div className="space-y-2 pt-4 border-t border-border">
-            <Label>Тема</Label>
+            <Label>{t("theme", lang)}</Label>
             <div className="flex gap-2">
-              <Button
-                variant={theme === "dark" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTheme("dark")}
-                className="flex-1"
-              >
-                <Moon className="w-4 h-4 mr-1" /> Тёмная
+              <Button variant={theme === "dark" ? "default" : "outline"} size="sm" onClick={() => setTheme("dark")} className="flex-1">
+                <Moon className="w-4 h-4 mr-1" /> {t("dark", lang)}
               </Button>
-              <Button
-                variant={theme === "light" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTheme("light")}
-                className="flex-1"
-              >
-                <Sun className="w-4 h-4 mr-1" /> Светлая
+              <Button variant={theme === "light" ? "default" : "outline"} size="sm" onClick={() => setTheme("light")} className="flex-1">
+                <Sun className="w-4 h-4 mr-1" /> {t("light", lang)}
               </Button>
-              <Button
-                variant={theme === "system" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setTheme("system")}
-                className="flex-1"
-              >
-                <Monitor className="w-4 h-4 mr-1" /> Авто
+              <Button variant={theme === "system" ? "default" : "outline"} size="sm" onClick={() => setTheme("system")} className="flex-1">
+                <Monitor className="w-4 h-4 mr-1" /> {t("auto", lang)}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2 pt-4 border-t border-border">
+            <Label>{t("language", lang)}</Label>
+            <div className="flex gap-2">
+              <Button variant={lang === "ru" ? "default" : "outline"} size="sm" onClick={() => setLang("ru")} className="flex-1">
+                🇷🇺 Русский
+              </Button>
+              <Button variant={lang === "en" ? "default" : "outline"} size="sm" onClick={() => setLang("en")} className="flex-1">
+                🇬🇧 English
               </Button>
             </div>
           </div>

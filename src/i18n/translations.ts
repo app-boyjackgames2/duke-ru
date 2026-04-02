@@ -1,0 +1,70 @@
+const translations: Record<string, Record<string, string>> = {
+  // Sidebar
+  "channels": { ru: "Каналы", en: "Channels" },
+  "chats": { ru: "Чаты", en: "Chats" },
+  "search": { ru: "Поиск...", en: "Search..." },
+  "no_channels": { ru: "Нет каналов", en: "No channels" },
+  "no_chats": { ru: "Нет чатов. Начните новый!", en: "No chats. Start a new one!" },
+  "nothing_found": { ru: "Ничего не найдено", en: "Nothing found" },
+  "members_short": { ru: "участн.", en: "members" },
+  "user": { ru: "Пользователь", en: "User" },
+  "group": { ru: "Группа", en: "Group" },
+  "loading": { ru: "Загрузка...", en: "Loading..." },
+  "online": { ru: "В сети", en: "Online" },
+  "in_call": { ru: "В звонке", en: "In call" },
+  "photo": { ru: "Фото", en: "Photo" },
+  "file": { ru: "Файл", en: "File" },
+  "voice": { ru: "Голосовое", en: "Voice" },
+  "back": { ru: "Назад", en: "Back" },
+
+  // Settings
+  "profile_settings": { ru: "Настройки профиля", en: "Profile Settings" },
+  "username": { ru: "Имя пользователя", en: "Username" },
+  "status": { ru: "Статус", en: "Status" },
+  "status_placeholder": { ru: "Чем занимаетесь?", en: "What are you up to?" },
+  "save": { ru: "Сохранить", en: "Save" },
+  "theme": { ru: "Тема", en: "Theme" },
+  "dark": { ru: "Тёмная", en: "Dark" },
+  "light": { ru: "Светлая", en: "Light" },
+  "auto": { ru: "Авто", en: "Auto" },
+  "language": { ru: "Язык", en: "Language" },
+  "profile_saved": { ru: "Профиль обновлён", en: "Profile saved" },
+  "save_error": { ru: "Ошибка сохранения", en: "Save error" },
+  "avatar_updated": { ru: "Аватар обновлён", en: "Avatar updated" },
+  "upload_error": { ru: "Ошибка загрузки", en: "Upload error" },
+
+  // Channels
+  "members_count": { ru: "участников", en: "members" },
+  "no_posts": { ru: "Пока нет публикаций", en: "No posts yet" },
+  "write_post": { ru: "Написать публикацию...", en: "Write a post..." },
+  "delete_channel": { ru: "Удалить канал", en: "Delete channel" },
+  "delete_channel_confirm": { ru: "Это действие нельзя отменить. Все посты и участники будут удалены.", en: "This action cannot be undone. All posts and members will be deleted." },
+  "cancel": { ru: "Отмена", en: "Cancel" },
+  "delete": { ru: "Удалить", en: "Delete" },
+  "channel_deleted": { ru: "Канал удалён", en: "Channel deleted" },
+  "delete_channel_error": { ru: "Не удалось удалить канал", en: "Failed to delete channel" },
+  "edited": { ru: "ред.", en: "edited" },
+  "post_updated": { ru: "Пост обновлён", en: "Post updated" },
+  "post_update_error": { ru: "Не удалось обновить пост", en: "Failed to update post" },
+  "post_delete_error": { ru: "Не удалось удалить пост", en: "Failed to delete post" },
+  "file_too_large": { ru: "Максимальный размер файла — 50 МБ", en: "Max file size is 50 MB" },
+  "file_upload_error": { ru: "Ошибка загрузки файла", en: "File upload error" },
+
+  // Moderation
+  "members_list": { ru: "Участники", en: "Members" },
+  "admin": { ru: "Админ", en: "Admin" },
+  "moderator": { ru: "Модератор", en: "Moderator" },
+  "member": { ru: "Участник", en: "Member" },
+  "make_moderator": { ru: "Назначить модератором", en: "Make moderator" },
+  "remove_moderator": { ru: "Снять модератора", en: "Remove moderator" },
+  "kick": { ru: "Исключить", en: "Kick" },
+  "ban": { ru: "Забанить", en: "Ban" },
+  "banned": { ru: "Забанен", en: "Banned" },
+  "creator": { ru: "Создатель", en: "Creator" },
+};
+
+export type Lang = "ru" | "en";
+
+export function t(key: string, lang: Lang = "ru"): string {
+  return translations[key]?.[lang] || translations[key]?.["ru"] || key;
+}
