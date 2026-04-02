@@ -16,6 +16,8 @@ import NewChatDialog from "./NewChatDialog";
 import CreateGroupDialog from "./CreateGroupDialog";
 import ChannelList from "../channels/ChannelList";
 import { useNavigate } from "react-router-dom";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
@@ -37,6 +39,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const navigate = useNavigate();
+  const { lang } = useLanguage();
 
   const filtered = conversations.filter((c) => {
     const name = c.type === "direct" ? c.other_user?.username : c.name;
@@ -71,23 +74,23 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
       <div className="p-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Поиск..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-muted border-0 h-9 text-sm" />
+          <Input placeholder={t("search", lang)} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-muted border-0 h-9 text-sm" />
         </div>
       </div>
 
       {/* Channels */}
-      <ChannelList channels={channels} activeId={activeType === "channel" ? activeId : null} onSelect={onSelectChannel} onRefresh={onRefreshChannels} />
+      <ChannelList channels={channels} activeId={activeType === "channel" ? activeId : null} onSelect={onSelectChannel} onRefresh={onRefreshChannels} searchQuery={search} />
 
       <Separator className="mx-3" />
 
       {/* Conversations */}
       <div className="flex items-center px-3 py-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">💬 Чаты</span>
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">💬 {t("chats", lang)}</span>
       </div>
       <ScrollArea className="flex-1 scrollbar-thin">
         <div className="px-2 pb-2">
           {filtered.map((conv) => {
-            const name = conv.type === "direct" ? conv.other_user?.username || "Пользователь" : conv.name || "Группа";
+            const name = conv.type === "direct" ? conv.other_user?.username || t("user", lang) : conv.name || t("group", lang);
             const isActive = activeType === "chat" && conv.id === activeId;
             const isOnline = conv.type === "direct" && conv.other_user?.is_online;
             const unread = conv.unread_count || 0;
@@ -112,7 +115,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
                     {isInCall && (
                       <span className="flex items-center gap-1 ml-1 flex-shrink-0">
                         <Phone className="w-3 h-3 text-duke-online animate-pulse" />
-                        <span className="text-[10px] text-duke-online font-medium">В звонке</span>
+                        <span className="text-[10px] text-duke-online font-medium">{t("in_call", lang)}</span>
                       </span>
                     )}
                     {conv.last_message && (
@@ -124,7 +127,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
                   <div className="flex items-center justify-between mt-0.5">
                     {conv.last_message && (
                       <p className="text-xs text-muted-foreground truncate flex-1">
-                        {conv.last_message.type === "image" ? "📷 Фото" : conv.last_message.type === "file" ? "📎 Файл" : conv.last_message.type === "voice" ? "🎤 Голосовое" : conv.last_message.content}
+                        {conv.last_message.type === "image" ? `📷 ${t("photo", lang)}` : conv.last_message.type === "file" ? `📎 ${t("file", lang)}` : conv.last_message.type === "voice" ? `🎤 ${t("voice", lang)}` : conv.last_message.content}
                       </p>
                     )}
                     {unread > 0 && !isActive && (
@@ -139,7 +142,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
           })}
           {filtered.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-8">
-              {search ? "Ничего не найдено" : "Нет чатов. Начните новый!"}
+              {search ? t("nothing_found", lang) : t("no_chats", lang)}
             </div>
           )}
         </div>
@@ -152,8 +155,8 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
           <AvatarFallback className="bg-primary/20 text-primary text-xs">{profile?.username?.[0]?.toUpperCase() || "?"}</AvatarFallback>
         </Avatar>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">{profile?.username || "Загрузка..."}</p>
-          <p className="text-xs text-muted-foreground truncate">{profile?.status_text || "В сети"}</p>
+          <p className="text-sm font-medium text-foreground truncate">{profile?.username || t("loading", lang)}</p>
+          <p className="text-xs text-muted-foreground truncate">{profile?.status_text || t("online", lang)}</p>
         </div>
       </div>
 
