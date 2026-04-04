@@ -1,70 +1,43 @@
 
 
-# DUKE — Обновление 02.04.2026
+# DUKE — Уведомления + Редактирование канала + Поделиться
 
-## 1. Миграция: Модерация каналов
+## 1. Уведомления при бане и исключении
 
-Новая таблица `channel_bans` + функция `is_channel_mod` + RLS:
+**Файл**: `src/components/channels/ChannelView.tsx`
 
-```sql
-CREATE TABLE public.channel_bans (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  channel_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  banned_by uuid NOT NULL,
-  reason text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(channel_id, user_id)
-);
-ALTER TABLE public.channel_bans ENABLE ROW LEVEL SECURITY;
+В `handleKick` и `handleBan` — после успешного действия показывать toast с именем пользователя:
+- Kick: `toast.success("Пользователь {username} исключён из канала")`
+- Ban: `toast.success("Пользователь {username} заблокирован")`
 
-CREATE OR REPLACE FUNCTION public.is_channel_mod(_user_id uuid, _channel_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.channel_members
-    WHERE user_id = _user_id AND channel_id = _channel_id AND role IN ('admin', 'moderator')
-  );
-$$;
-```
+Добавить новые ключи в `src/i18n/translations.ts`:
+- `user_kicked`, `user_banned`, `channel_edited`, `edit_channel`, `share_channel`, `link_copied`, `channel_name`, `channel_description`, `access_type_label`, `subscribers`
 
-Policies: mods can insert/delete bans, members can view bans, mods can update member roles, mods can delete posts and kick members.
+## 2. Редактирование канала в ChannelView
 
-## 2. i18n — Авто-определение языка
+**Файл**: `src/components/channels/ChannelView.tsx`
 
-**Новый файл** `src/i18n/translations.ts` — словарь ~70 ключей (RU/EN) для всех строк интерфейса.
+Добавить кнопку редактирования (Pencil icon) в header рядом с кнопкой удаления (видна только создателю). По клику — Dialog с формой:
+- Поле «Название канала» (prefilled)
+- Поле «Описание» (prefilled)
+- Select «Тип доступа» (open / link / restricted)
+- Кнопка «Сохранить» → `supabase.from("channels").update({...}).eq("id", channel.id)` → `onRefresh()`
 
-**Новый файл** `src/hooks/useLanguage.ts` — определяет язык из `navigator.language`, хранит в `localStorage` (`duke-lang`), экспортирует `{ lang, setLang }`.
+## 3. Кнопка «Поделиться» в ChannelView
 
-## 3. Поиск каналов в sidebar
+**Файл**: `src/components/channels/ChannelView.tsx`
 
-- `ChatSidebar.tsx` — передать `searchQuery={search}` в `ChannelList`
-- `ChannelList.tsx` — принять `searchQuery?: string`, фильтровать `channels.filter(ch => ch.name.toLowerCase().includes(searchQuery))`
+Добавить кнопку Share2 в header. По клику — копировать `window.location.origin + "/channel/" + channel.name` в буфер обмена, показать toast.
 
-## 4. UI модерации в ChannelView
+## 4. ChannelPage.tsx — i18n
 
-В `ChannelView.tsx` добавить:
-- Кнопка «Участники» (Users icon) → Sheet/Dialog со списком участников
-- Загрузка участников из `channel_members` + `profiles`
-- Для каждого участника: роль (admin/moderator/member)
-- Для creator/mod: кнопки назначить модератором, исключить, забанить
-- Модераторы видят кнопку удаления постов других авторов
+**Файл**: `src/pages/ChannelPage.tsx`
 
-## 5. Замена строк на t()
-
-Обновить файлы, заменив хардкод-строки на `t(key, lang)`:
-- `ChatSidebar.tsx`
-- `ChannelList.tsx`
-- `ChannelView.tsx`
-- `Settings.tsx` (+ добавить переключатель языка RU/EN)
-
-## 6. Переключатель языка в Settings
-
-В `Settings.tsx` добавить секцию «Язык» с двумя кнопками: **Русский** / **English**.
+Заменить хардкод-строки на `t(key, lang)` с использованием `useLanguage`. Всё остальное (маршрут, подписка, типы доступа, кнопка «Поделиться») уже реализовано.
 
 ## Порядок
-1. Миграция
-2. `translations.ts` + `useLanguage.ts`
-3. Поиск каналов в sidebar
-4. Модерация UI в ChannelView
-5. Замена строк + переключатель языка в Settings
+1. Добавить i18n ключи в `translations.ts`
+2. Уведомления в `handleKick`/`handleBan` в `ChannelView.tsx`
+3. Кнопки «Редактировать» и «Поделиться» в header `ChannelView.tsx`
+4. i18n в `ChannelPage.tsx`
 
