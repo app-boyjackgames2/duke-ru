@@ -465,6 +465,30 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             <DialogTitle>{t("edit_channel", lang)}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Avatar upload */}
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="h-16 w-16 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                <AvatarImage src={editAvatarPreview || channel.avatar_url || ""} />
+                <AvatarFallback className="bg-secondary text-secondary-foreground"><Megaphone className="w-6 h-6" /></AvatarFallback>
+              </Avatar>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setEditAvatarFile(f);
+                    setEditAvatarPreview(URL.createObjectURL(f));
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => avatarInputRef.current?.click()}>
+                {t("photo", lang)}
+              </button>
+            </div>
             <div>
               <label className="text-sm text-muted-foreground">{t("channel_name", lang)}</label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
