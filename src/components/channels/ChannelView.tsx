@@ -70,6 +70,9 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [editDesc, setEditDesc] = useState(channel.description || "");
   const [editAccess, setEditAccess] = useState(channel.access_type || "open");
   const [saving, setSaving] = useState(false);
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isCreator = user?.id === channel.created_by;
   const [isMod, setIsMod] = useState(false);
