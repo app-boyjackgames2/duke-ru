@@ -443,6 +443,39 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Channel Dialog */}
+      <Dialog open={showEdit} onOpenChange={setShowEdit}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("edit_channel", lang)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground">{t("channel_name", lang)}</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">{t("channel_description", lang)}</label>
+              <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="resize-none min-h-[60px]" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">{t("access_type_label", lang)}</label>
+              <Select value={editAccess} onValueChange={setEditAccess}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">{t("access_open", lang)}</SelectItem>
+                  <SelectItem value="link">{t("access_link", lang)}</SelectItem>
+                  <SelectItem value="restricted">{t("access_restricted", lang)}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full duke-gradient" onClick={handleEditChannel} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save", lang)}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
