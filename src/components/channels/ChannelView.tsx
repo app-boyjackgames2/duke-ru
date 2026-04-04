@@ -150,7 +150,25 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     }
   };
 
-  const handlePost = async () => {
+  const handleEditChannel = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("channels")
+      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess })
+      .eq("id", channel.id);
+    if (error) toast.error(error.message);
+    else { toast.success(t("channel_edited", lang)); setShowEdit(false); onRefresh?.(); }
+    setSaving(false);
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/channel/${channel.name}`;
+    navigator.clipboard.writeText(url);
+    toast.success(t("link_copied", lang));
+  };
+
+
     if (!newPost.trim() && !attachedFile) return;
     setSending(true);
 
