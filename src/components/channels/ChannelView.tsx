@@ -168,7 +168,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     toast.success(t("link_copied", lang));
   };
 
-
+  const handlePost = async () => {
     if (!newPost.trim() && !attachedFile) return;
     setSending(true);
 
