@@ -61,6 +61,29 @@ const translations: Record<string, Record<string, string>> = {
   "ban": { ru: "Забанить", en: "Ban" },
   "banned": { ru: "Забанен", en: "Banned" },
   "creator": { ru: "Создатель", en: "Creator" },
+
+  // Notifications & Edit
+  "user_kicked": { ru: "исключён из канала", en: "was kicked from the channel" },
+  "user_banned": { ru: "заблокирован", en: "was banned" },
+  "edit_channel": { ru: "Редактировать канал", en: "Edit channel" },
+  "channel_edited": { ru: "Канал обновлён", en: "Channel updated" },
+  "share_channel": { ru: "Поделиться каналом", en: "Share channel" },
+  "link_copied": { ru: "Ссылка скопирована!", en: "Link copied!" },
+  "channel_name": { ru: "Название канала", en: "Channel name" },
+  "channel_description": { ru: "Описание", en: "Description" },
+  "access_type_label": { ru: "Тип доступа", en: "Access type" },
+  "access_open": { ru: "Открытый", en: "Open" },
+  "access_link": { ru: "По ссылке", en: "By link" },
+  "access_restricted": { ru: "Ограниченный", en: "Restricted" },
+  "subscribers": { ru: "подписчиков", en: "subscribers" },
+  "channel_not_found": { ru: "Канал не найден", en: "Channel not found" },
+  "go_home": { ru: "На главную", en: "Go home" },
+  "subscribed": { ru: "Вы подписаны", en: "Subscribed" },
+  "subscribe": { ru: "Подписаться", en: "Subscribe" },
+  "subscribe_error": { ru: "Не удалось подписаться", en: "Failed to subscribe" },
+  "subscribed_success": { ru: "Вы подписались на канал!", en: "Subscribed to channel!" },
+  "access_limited": { ru: "Доступ ограничен", en: "Access limited" },
+  "no_posts_yet": { ru: "Пока нет публикаций", en: "No posts yet" },
 };
 
 export type Lang = "ru" | "en";
