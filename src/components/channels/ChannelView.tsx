@@ -156,12 +156,23 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const handleEditChannel = async () => {
     if (!editName.trim()) return;
     setSaving(true);
+
+    let avatarUrl = channel.avatar_url;
+    if (editAvatarFile) {
+      const ext = editAvatarFile.name.split(".").pop();
+      const path = `channels/${channel.id}/avatar_${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, editAvatarFile);
+      if (uploadErr) { toast.error(t("upload_error", lang)); setSaving(false); return; }
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      avatarUrl = urlData.publicUrl;
+    }
+
     const { error } = await supabase
       .from("channels")
-      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess })
+      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess, avatar_url: avatarUrl })
       .eq("id", channel.id);
     if (error) toast.error(error.message);
-    else { toast.success(t("channel_edited", lang)); setShowEdit(false); onRefresh?.(); }
+    else { toast.success(t("channel_edited", lang)); setShowEdit(false); setEditAvatarFile(null); setEditAvatarPreview(null); onRefresh?.(); }
     setSaving(false);
   };
 
