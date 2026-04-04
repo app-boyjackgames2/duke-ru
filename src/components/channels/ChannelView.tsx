@@ -4,9 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +64,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
+  // Edit channel state
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState(channel.name);
+  const [editDesc, setEditDesc] = useState(channel.description || "");
+  const [editAccess, setEditAccess] = useState(channel.access_type || "open");
+  const [saving, setSaving] = useState(false);
+
   const isCreator = user?.id === channel.created_by;
   const [isMod, setIsMod] = useState(false);
 
@@ -105,22 +114,23 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     else loadMembers();
   };
 
-  const handleKick = async (memberId: string) => {
+  const handleKick = async (memberId: string, username: string) => {
     const { error } = await supabase
       .from("channel_members")
       .delete()
       .eq("id", memberId);
     if (error) toast.error(error.message);
-    else { loadMembers(); onRefresh?.(); }
+    else { toast.success(`${username} ${t("user_kicked", lang)}`); loadMembers(); onRefresh?.(); }
   };
 
-  const handleBan = async (memberUserId: string) => {
+  const handleBan = async (memberUserId: string, username: string) => {
     const { error } = await supabase
       .from("channel_bans")
       .insert({ channel_id: channel.id, user_id: memberUserId, banned_by: user!.id });
     if (error) toast.error(error.message);
     else {
       await supabase.from("channel_members").delete().eq("channel_id", channel.id).eq("user_id", memberUserId);
+      toast.success(`${username} ${t("user_banned", lang)}`);
       loadMembers();
       onRefresh?.();
     }
@@ -138,6 +148,24 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       toast.success(t("channel_deleted", lang));
       onRefresh?.();
     }
+  };
+
+  const handleEditChannel = async () => {
+    if (!editName.trim()) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("channels")
+      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess })
+      .eq("id", channel.id);
+    if (error) toast.error(error.message);
+    else { toast.success(t("channel_edited", lang)); setShowEdit(false); onRefresh?.(); }
+    setSaving(false);
+  };
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/channel/${channel.name}`;
+    navigator.clipboard.writeText(url);
+    toast.success(t("link_copied", lang));
   };
 
   const handlePost = async () => {
@@ -215,9 +243,14 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setShowMembers(true); loadMembers(); }}>
             <Users className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowInvite(true)}>
-            <UserPlus className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleShare}>
+            <Share2 className="w-4 h-4" />
           </Button>
+          {isCreator && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setEditName(channel.name); setEditDesc(channel.description || ""); setEditAccess(channel.access_type || "open"); setShowEdit(true); }}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+          )}
           {isCreator && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -392,11 +425,11 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" title={m.role === "moderator" ? t("remove_moderator", lang) : t("make_moderator", lang)} onClick={() => handleToggleMod(m.id, m.role)}>
                             {m.role === "moderator" ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("kick", lang)} onClick={() => handleKick(m.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("kick", lang)} onClick={() => handleKick(m.id, m.username)}>
                             <UserMinus className="w-3.5 h-3.5" />
                           </Button>
                           {isCreator && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("ban", lang)} onClick={() => handleBan(m.user_id)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("ban", lang)} onClick={() => handleBan(m.user_id, m.username)}>
                               <Ban className="w-3.5 h-3.5" />
                             </Button>
                           )}
@@ -408,6 +441,39 @@ export default function ChannelView({ channel, onRefresh }: Props) {
               </div>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Channel Dialog */}
+      <Dialog open={showEdit} onOpenChange={setShowEdit}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("edit_channel", lang)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground">{t("channel_name", lang)}</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">{t("channel_description", lang)}</label>
+              <Textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="resize-none min-h-[60px]" />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground">{t("access_type_label", lang)}</label>
+              <Select value={editAccess} onValueChange={setEditAccess}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">{t("access_open", lang)}</SelectItem>
+                  <SelectItem value="link">{t("access_link", lang)}</SelectItem>
+                  <SelectItem value="restricted">{t("access_restricted", lang)}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full duke-gradient" onClick={handleEditChannel} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : t("save", lang)}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

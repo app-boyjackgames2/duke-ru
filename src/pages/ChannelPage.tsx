@@ -6,8 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Megaphone, Users, Loader2, Share2, LogIn, Check } from "lucide-react";
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru, enUS } from "date-fns/locale";
 import { toast } from "sonner";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
 
 interface ChannelData {
   id: string;
@@ -33,12 +35,15 @@ export default function ChannelPage() {
   const { channelName } = useParams<{ channelName: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { lang } = useLanguage();
   const [channel, setChannel] = useState<ChannelData | null>(null);
   const [posts, setPosts] = useState<PostData[]>([]);
   const [memberCount, setMemberCount] = useState(0);
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+
+  const dateFnsLocale = lang === "ru" ? ru : enUS;
 
   useEffect(() => {
     if (!channelName) return;
@@ -89,11 +94,11 @@ export default function ChannelPage() {
       role: "member",
     });
     if (error) {
-      toast.error("Не удалось подписаться");
+      toast.error(t("subscribe_error", lang));
     } else {
       setIsMember(true);
       setMemberCount((c) => c + 1);
-      toast.success("Вы подписались на канал!");
+      toast.success(t("subscribed_success", lang));
     }
     setJoining(false);
   };
@@ -101,7 +106,7 @@ export default function ChannelPage() {
   const handleShare = () => {
     const url = `${window.location.origin}/channel/${channelName}`;
     navigator.clipboard.writeText(url);
-    toast.success("Ссылка скопирована!");
+    toast.success(t("link_copied", lang));
   };
 
   if (loading) {
@@ -116,8 +121,8 @@ export default function ChannelPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <Megaphone className="w-16 h-16 text-muted-foreground/30" />
-        <p className="text-muted-foreground text-lg">Канал не найден</p>
-        <Button variant="outline" onClick={() => navigate("/")}>На главную</Button>
+        <p className="text-muted-foreground text-lg">{t("channel_not_found", lang)}</p>
+        <Button variant="outline" onClick={() => navigate("/")}>{t("go_home", lang)}</Button>
       </div>
     );
   }
@@ -126,7 +131,6 @@ export default function ChannelPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="bg-card border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-8">
           <div className="flex items-center gap-4 mb-4">
@@ -143,22 +147,22 @@ export default function ChannelPage() {
               )}
               <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
                 <Users className="w-3.5 h-3.5" />
-                <span>{memberCount} подписчиков</span>
+                <span>{memberCount} {t("subscribers", lang)}</span>
               </div>
             </div>
           </div>
           <div className="flex gap-2">
             {isMember ? (
               <Button disabled className="duke-gradient">
-                <Check className="w-4 h-4 mr-2" /> Вы подписаны
+                <Check className="w-4 h-4 mr-2" /> {t("subscribed", lang)}
               </Button>
             ) : canSubscribe ? (
               <Button className="duke-gradient" onClick={handleSubscribe} disabled={joining}>
                 {joining ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <LogIn className="w-4 h-4 mr-2" />}
-                Подписаться
+                {t("subscribe", lang)}
               </Button>
             ) : (
-              <Button disabled variant="outline">Доступ ограничен</Button>
+              <Button disabled variant="outline">{t("access_limited", lang)}</Button>
             )}
             <Button variant="outline" size="icon" onClick={handleShare}>
               <Share2 className="w-4 h-4" />
@@ -167,21 +171,20 @@ export default function ChannelPage() {
         </div>
       </div>
 
-      {/* Posts */}
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {posts.length === 0 ? (
-          <p className="text-center text-muted-foreground py-12">Пока нет публикаций</p>
+          <p className="text-center text-muted-foreground py-12">{t("no_posts_yet", lang)}</p>
         ) : (
           posts.map((post) => (
             <div key={post.id} className="bg-card rounded-xl p-4 border border-border">
               <p className="text-xs text-muted-foreground mb-2">
-                {format(new Date(post.created_at), "d MMM yyyy, HH:mm", { locale: ru })}
+                {format(new Date(post.created_at), "d MMM yyyy, HH:mm", { locale: dateFnsLocale })}
               </p>
               <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
               {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-full" />}
               {post.file_url && !post.image_url && (
                 <a href={post.file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
-                  📎 {post.file_name || "Файл"}
+                  📎 {post.file_name || t("file", lang)}
                 </a>
               )}
             </div>

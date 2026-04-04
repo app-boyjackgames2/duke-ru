@@ -9,6 +9,7 @@ export interface ChannelWithDetails {
   avatar_url: string | null;
   created_by: string;
   created_at: string;
+  access_type: string;
   member_count?: number;
 }
 
