@@ -70,6 +70,9 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [editDesc, setEditDesc] = useState(channel.description || "");
   const [editAccess, setEditAccess] = useState(channel.access_type || "open");
   const [saving, setSaving] = useState(false);
+  const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [editAvatarPreview, setEditAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const isCreator = user?.id === channel.created_by;
   const [isMod, setIsMod] = useState(false);
@@ -153,12 +156,23 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const handleEditChannel = async () => {
     if (!editName.trim()) return;
     setSaving(true);
+
+    let avatarUrl = channel.avatar_url;
+    if (editAvatarFile) {
+      const ext = editAvatarFile.name.split(".").pop();
+      const path = `channels/${channel.id}/avatar_${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, editAvatarFile);
+      if (uploadErr) { toast.error(t("upload_error", lang)); setSaving(false); return; }
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      avatarUrl = urlData.publicUrl;
+    }
+
     const { error } = await supabase
       .from("channels")
-      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess })
+      .update({ name: editName.trim(), description: editDesc.trim(), access_type: editAccess, avatar_url: avatarUrl })
       .eq("id", channel.id);
     if (error) toast.error(error.message);
-    else { toast.success(t("channel_edited", lang)); setShowEdit(false); onRefresh?.(); }
+    else { toast.success(t("channel_edited", lang)); setShowEdit(false); setEditAvatarFile(null); setEditAvatarPreview(null); onRefresh?.(); }
     setSaving(false);
   };
 
@@ -451,6 +465,30 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             <DialogTitle>{t("edit_channel", lang)}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {/* Avatar upload */}
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="h-16 w-16 cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                <AvatarImage src={editAvatarPreview || channel.avatar_url || ""} />
+                <AvatarFallback className="bg-secondary text-secondary-foreground"><Megaphone className="w-6 h-6" /></AvatarFallback>
+              </Avatar>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) {
+                    setEditAvatarFile(f);
+                    setEditAvatarPreview(URL.createObjectURL(f));
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <button type="button" className="text-xs text-primary hover:underline" onClick={() => avatarInputRef.current?.click()}>
+                {t("photo", lang)}
+              </button>
+            </div>
             <div>
               <label className="text-sm text-muted-foreground">{t("channel_name", lang)}</label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
