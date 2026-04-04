@@ -243,9 +243,14 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setShowMembers(true); loadMembers(); }}>
             <Users className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowInvite(true)}>
-            <UserPlus className="w-4 h-4" />
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleShare}>
+            <Share2 className="w-4 h-4" />
           </Button>
+          {isCreator && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => { setEditName(channel.name); setEditDesc(channel.description || ""); setEditAccess(channel.access_type || "open"); setShowEdit(true); }}>
+              <Pencil className="w-4 h-4" />
+            </Button>
+          )}
           {isCreator && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
