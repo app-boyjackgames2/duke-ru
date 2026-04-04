@@ -395,11 +395,11 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" title={m.role === "moderator" ? t("remove_moderator", lang) : t("make_moderator", lang)} onClick={() => handleToggleMod(m.id, m.role)}>
                             {m.role === "moderator" ? <ShieldAlert className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("kick", lang)} onClick={() => handleKick(m.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("kick", lang)} onClick={() => handleKick(m.id, m.username)}>
                             <UserMinus className="w-3.5 h-3.5" />
                           </Button>
                           {isCreator && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("ban", lang)} onClick={() => handleBan(m.user_id)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" title={t("ban", lang)} onClick={() => handleBan(m.user_id, m.username)}>
                               <Ban className="w-3.5 h-3.5" />
                             </Button>
                           )}
