@@ -64,6 +64,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
+  // Edit channel state
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState(channel.name);
+  const [editDesc, setEditDesc] = useState(channel.description || "");
+  const [editAccess, setEditAccess] = useState(channel.access_type || "open");
+  const [saving, setSaving] = useState(false);
+
   const isCreator = user?.id === channel.created_by;
   const [isMod, setIsMod] = useState(false);
 
