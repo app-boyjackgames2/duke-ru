@@ -107,22 +107,23 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     else loadMembers();
   };
 
-  const handleKick = async (memberId: string) => {
+  const handleKick = async (memberId: string, username: string) => {
     const { error } = await supabase
       .from("channel_members")
       .delete()
       .eq("id", memberId);
     if (error) toast.error(error.message);
-    else { loadMembers(); onRefresh?.(); }
+    else { toast.success(`${username} ${t("user_kicked", lang)}`); loadMembers(); onRefresh?.(); }
   };
 
-  const handleBan = async (memberUserId: string) => {
+  const handleBan = async (memberUserId: string, username: string) => {
     const { error } = await supabase
       .from("channel_bans")
       .insert({ channel_id: channel.id, user_id: memberUserId, banned_by: user!.id });
     if (error) toast.error(error.message);
     else {
       await supabase.from("channel_members").delete().eq("channel_id", channel.id).eq("user_id", memberUserId);
+      toast.success(`${username} ${t("user_banned", lang)}`);
       loadMembers();
       onRefresh?.();
     }
