@@ -13,6 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
+import { formatDistanceToNow } from "date-fns";
+import { ru, enUS } from "date-fns/locale";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
