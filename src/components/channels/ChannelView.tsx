@@ -76,12 +76,22 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
   const isCreator = user?.id === channel.created_by;
   const [isMod, setIsMod] = useState(false);
+  const [myRole, setMyRole] = useState<string>("member");
 
   useEffect(() => {
     if (!user) return;
     supabase.rpc("is_channel_mod", { _user_id: user.id, _channel_id: channel.id })
       .then(({ data }) => setIsMod(!!data));
+    supabase
+      .from("channel_members")
+      .select("role")
+      .eq("channel_id", channel.id)
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => { if (data) setMyRole(data.role); });
   }, [user, channel.id]);
+
+  const canPost = isCreator || isMod || myRole === "moderator" || myRole === "admin";
 
   const loadMembers = async () => {
     setMembersLoading(true);
