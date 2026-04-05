@@ -84,6 +84,7 @@ const translations: Record<string, Record<string, string>> = {
   "subscribed_success": { ru: "Вы подписались на канал!", en: "Subscribed to channel!" },
   "access_limited": { ru: "Доступ ограничен", en: "Access limited" },
   "no_posts_yet": { ru: "Пока нет публикаций", en: "No posts yet" },
+  "no_post_permission": { ru: "Только модераторы и администраторы могут публиковать", en: "Only moderators and admins can post" },
 };
 
 export type Lang = "ru" | "en";
