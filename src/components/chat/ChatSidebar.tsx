@@ -36,11 +36,19 @@ interface Props {
 export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel, onRefreshChannels, onRefreshConversations, activeCallConversationId }: Props) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
+  const { leaveConversation } = useConversations();
   const [search, setSearch] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const navigate = useNavigate();
   const { lang } = useLanguage();
+
+  const handleDeleteChat = async (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation();
+    await leaveConversation(convId);
+    toast.success(t("chat_deleted", lang));
+    onRefreshConversations?.();
+  };
 
   const filtered = conversations.filter((c) => {
     const name = c.type === "direct" ? c.other_user?.username : c.name;
