@@ -170,11 +170,11 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     let avatarUrl = channel.avatar_url;
     if (editAvatarFile) {
       const ext = editAvatarFile.name.split(".").pop();
-      const path = `channels/${channel.id}/avatar_${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, editAvatarFile);
+      const path = `channels/${channel.id}/avatar.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("avatars").upload(path, editAvatarFile, { upsert: true });
       if (uploadErr) { toast.error(t("upload_error", lang)); setSaving(false); return; }
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-      avatarUrl = urlData.publicUrl;
+      avatarUrl = urlData.publicUrl + "?t=" + Date.now();
     }
 
     const { error } = await supabase
