@@ -29,6 +29,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
   const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
+  const { lang } = useLanguage();
   const webrtc = useWebRTC(conversation?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null);
