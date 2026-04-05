@@ -20,6 +20,7 @@ export interface ConversationWithDetails {
     avatar_url: string | null;
     is_online: boolean | null;
     user_id: string;
+    last_seen: string | null;
   };
   unread_count?: number;
 }
