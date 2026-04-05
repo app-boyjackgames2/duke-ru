@@ -85,6 +85,11 @@ const translations: Record<string, Record<string, string>> = {
   "access_limited": { ru: "Доступ ограничен", en: "Access limited" },
   "no_posts_yet": { ru: "Пока нет публикаций", en: "No posts yet" },
   "no_post_permission": { ru: "Только модераторы и администраторы могут публиковать", en: "Only moderators and admins can post" },
+  "last_seen": { ru: "был(а) в сети", en: "last seen" },
+  "offline": { ru: "Не в сети", en: "Offline" },
+  "delete_chat": { ru: "Удалить чат", en: "Delete chat" },
+  "delete_chat_confirm": { ru: "Вы уверены? Чат будет удалён для вас.", en: "Are you sure? The chat will be removed for you." },
+  "chat_deleted": { ru: "Чат удалён", en: "Chat deleted" },
 };
 
 export type Lang = "ru" | "en";
