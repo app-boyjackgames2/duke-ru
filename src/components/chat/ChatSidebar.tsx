@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, LogOut, Settings, Users, Phone } from "lucide-react";
+import { Search, Plus, LogOut, Settings, Users, Phone, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
