@@ -190,5 +190,15 @@ export function useConversations() {
     return newConv.id;
   };
 
-  return { conversations, loading, fetchConversations, createDirectConversation };
+  const leaveConversation = async (conversationId: string) => {
+    if (!user) return;
+    await supabase
+      .from("conversation_members")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .eq("user_id", user.id);
+    fetchConversations();
+  };
+
+  return { conversations, loading, fetchConversations, createDirectConversation, leaveConversation };
 }
