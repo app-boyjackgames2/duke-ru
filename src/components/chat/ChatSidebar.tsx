@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Plus, LogOut, Settings, Users, Phone } from "lucide-react";
+import { Search, Plus, LogOut, Settings, Users, Phone, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
-import { ConversationWithDetails } from "@/hooks/useConversations";
+import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
+import { toast } from "sonner";
 import { ChannelWithDetails } from "@/hooks/useChannels";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -35,11 +36,19 @@ interface Props {
 export default function ChatSidebar({ conversations, channels, activeId, activeType, onSelectChat, onSelectChannel, onRefreshChannels, onRefreshConversations, activeCallConversationId }: Props) {
   const { signOut } = useAuth();
   const { profile } = useProfile();
+  const { leaveConversation } = useConversations();
   const [search, setSearch] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
   const navigate = useNavigate();
   const { lang } = useLanguage();
+
+  const handleDeleteChat = async (e: React.MouseEvent, convId: string) => {
+    e.stopPropagation();
+    await leaveConversation(convId);
+    toast.success(t("chat_deleted", lang));
+    onRefreshConversations?.();
+  };
 
   const filtered = conversations.filter((c) => {
     const name = c.type === "direct" ? c.other_user?.username : c.name;
@@ -97,47 +106,55 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
             const isInCall = activeCallConversationId === conv.id;
 
             return (
-              <button
-                key={conv.id}
-                onClick={() => onSelectChat(conv.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-lg mb-0.5 transition-colors text-left ${isActive ? "bg-primary/10 border border-primary/20 duke-glow-sm" : "hover:bg-muted"}`}
-              >
-                <div className="relative flex-shrink-0">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={conv.type === "direct" ? conv.other_user?.avatar_url || "" : conv.avatar_url || ""} />
-                    <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{name[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-duke-online rounded-full border-2 border-card" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{name}</span>
-                    {isInCall && (
-                      <span className="flex items-center gap-1 ml-1 flex-shrink-0">
-                        <Phone className="w-3 h-3 text-duke-online animate-pulse" />
-                        <span className="text-[10px] text-duke-online font-medium">{t("in_call", lang)}</span>
-                      </span>
-                    )}
-                    {conv.last_message && (
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
-                        {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
-                      </span>
-                    )}
+              <div key={conv.id} className="relative group">
+                <button
+                  onClick={() => onSelectChat(conv.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg mb-0.5 transition-colors text-left ${isActive ? "bg-primary/10 border border-primary/20 duke-glow-sm" : "hover:bg-muted"}`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={conv.type === "direct" ? conv.other_user?.avatar_url || "" : conv.avatar_url || ""} />
+                      <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">{name[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    {isOnline && <span className="absolute bottom-0 right-0 w-3 h-3 bg-duke-online rounded-full border-2 border-card" />}
                   </div>
-                  <div className="flex items-center justify-between mt-0.5">
-                    {conv.last_message && (
-                      <p className="text-xs text-muted-foreground truncate flex-1">
-                        {conv.last_message.type === "image" ? `📷 ${t("photo", lang)}` : conv.last_message.type === "file" ? `📎 ${t("file", lang)}` : conv.last_message.type === "voice" ? `🎤 ${t("voice", lang)}` : conv.last_message.content}
-                      </p>
-                    )}
-                    {unread > 0 && !isActive && (
-                      <Badge className="ml-1.5 h-5 min-w-[20px] px-1.5 text-[10px] font-bold duke-gradient border-0 text-primary-foreground">
-                        {unread > 99 ? "99+" : unread}
-                      </Badge>
-                    )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-medium truncate ${isActive ? "text-primary" : "text-foreground"}`}>{name}</span>
+                      {isInCall && (
+                        <span className="flex items-center gap-1 ml-1 flex-shrink-0">
+                          <Phone className="w-3 h-3 text-duke-online animate-pulse" />
+                          <span className="text-[10px] text-duke-online font-medium">{t("in_call", lang)}</span>
+                        </span>
+                      )}
+                      {conv.last_message && (
+                        <span className="text-xs text-muted-foreground flex-shrink-0">
+                          {formatDistanceToNow(new Date(conv.last_message.created_at), { addSuffix: false, locale: ru })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-0.5">
+                      {conv.last_message && (
+                        <p className="text-xs text-muted-foreground truncate flex-1">
+                          {conv.last_message.type === "image" ? `📷 ${t("photo", lang)}` : conv.last_message.type === "file" ? `📎 ${t("file", lang)}` : conv.last_message.type === "voice" ? `🎤 ${t("voice", lang)}` : conv.last_message.content}
+                        </p>
+                      )}
+                      {unread > 0 && !isActive && (
+                        <Badge className="ml-1.5 h-5 min-w-[20px] px-1.5 text-[10px] font-bold duke-gradient border-0 text-primary-foreground">
+                          {unread > 99 ? "99+" : unread}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
+                <button
+                  onClick={(e) => handleDeleteChat(e, conv.id)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                  title={t("delete_chat", lang)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             );
           })}
           {filtered.length === 0 && (

@@ -13,6 +13,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
 import { useWebRTC } from "@/hooks/useWebRTC";
+import { useLanguage } from "@/hooks/useLanguage";
+import { t } from "@/i18n/translations";
+import { formatDistanceToNow } from "date-fns";
+import { ru, enUS } from "date-fns/locale";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
@@ -25,6 +29,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
   const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
+  const { lang } = useLanguage();
   const webrtc = useWebRTC(conversation?.id || null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null);
@@ -101,7 +106,13 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
           <div>
             <h3 className="text-sm font-semibold text-foreground">{chatName}</h3>
             <p className="text-xs text-muted-foreground">
-              {conversation.type === "group" ? "Группа" : isOnline ? <span className="text-duke-online">В сети</span> : "Не в сети"}
+              {conversation.type === "group" 
+                ? t("group", lang) 
+                : isOnline 
+                  ? <span className="text-duke-online">{t("online", lang)}</span> 
+                  : conversation.other_user?.last_seen 
+                    ? `${t("last_seen", lang)} ${formatDistanceToNow(new Date(conversation.other_user.last_seen), { addSuffix: true, locale: lang === "ru" ? ru : enUS })}`
+                    : t("offline", lang)}
             </p>
           </div>
         </div>
