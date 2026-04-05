@@ -115,9 +115,9 @@ export function useConversations() {
             .neq("user_id", user.id)
             .limit(1);
           if (members?.[0]) {
-            const { data: otherProfile } = await supabase
+          const { data: otherProfile } = await supabase
               .from("profiles")
-              .select("username, avatar_url, is_online, user_id")
+              .select("username, avatar_url, is_online, user_id, last_seen")
               .eq("user_id", members[0].user_id)
               .single();
             if (otherProfile) other_user = otherProfile;
