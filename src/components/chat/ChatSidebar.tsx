@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Search, Plus, LogOut, Settings, Users, Phone, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -40,13 +44,20 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
   const [search, setSearch] = useState("");
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
+  const [deletingConvId, setDeletingConvId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { lang } = useLanguage();
 
-  const handleDeleteChat = async (e: React.MouseEvent, convId: string) => {
+  const handleDeleteChat = (e: React.MouseEvent, convId: string) => {
     e.stopPropagation();
-    await leaveConversation(convId);
+    setDeletingConvId(convId);
+  };
+
+  const confirmDeleteChat = async () => {
+    if (!deletingConvId) return;
+    await leaveConversation(deletingConvId);
     toast.success(t("chat_deleted", lang));
+    setDeletingConvId(null);
     onRefreshConversations?.();
   };
 
@@ -176,6 +187,21 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
           <p className="text-xs text-muted-foreground truncate">{profile?.status_text || t("online", lang)}</p>
         </div>
       </div>
+
+      <AlertDialog open={!!deletingConvId} onOpenChange={(open) => { if (!open) setDeletingConvId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("delete_chat", lang)}</AlertDialogTitle>
+            <AlertDialogDescription>{t("delete_chat_confirm", lang)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel", lang)}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {t("delete", lang)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <NewChatDialog open={showNewChat} onOpenChange={setShowNewChat} />
       <CreateGroupDialog
