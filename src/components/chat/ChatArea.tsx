@@ -38,6 +38,28 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
+  const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
+
+  // Fetch other members' last_read_at
+  const fetchReadReceipts = useCallback(async () => {
+    if (!conversation?.id || !user) return;
+    const { data } = await supabase
+      .from("conversation_last_read")
+      .select("last_read_at")
+      .eq("conversation_id", conversation.id)
+      .neq("user_id", user.id);
+    if (data && data.length > 0) {
+      // Use the latest read timestamp among other members
+      const latest = data.reduce((max, r) => r.last_read_at > max ? r.last_read_at : max, data[0].last_read_at);
+      setOthersLastRead(latest);
+    } else {
+      setOthersLastRead(null);
+    }
+  }, [conversation?.id, user]);
+
+  useEffect(() => {
+    fetchReadReceipts();
+  }, [fetchReadReceipts, messages.length]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
