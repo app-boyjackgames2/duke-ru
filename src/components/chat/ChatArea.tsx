@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MessageWithSender, useMessages } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/i18n/translations";
 import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
@@ -37,6 +38,28 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
+  const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
+
+  // Fetch other members' last_read_at
+  const fetchReadReceipts = useCallback(async () => {
+    if (!conversation?.id || !user) return;
+    const { data } = await supabase
+      .from("conversation_last_read")
+      .select("last_read_at")
+      .eq("conversation_id", conversation.id)
+      .neq("user_id", user.id);
+    if (data && data.length > 0) {
+      // Use the latest read timestamp among other members
+      const latest = data.reduce((max, r) => r.last_read_at > max ? r.last_read_at : max, data[0].last_read_at);
+      setOthersLastRead(latest);
+    } else {
+      setOthersLastRead(null);
+    }
+  }, [conversation?.id, user]);
+
+  useEffect(() => {
+    fetchReadReceipts();
+  }, [fetchReadReceipts, messages.length]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -169,6 +192,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
         {filteredMessages.map((msg, i) => {
           const isMine = msg.sender_id === user?.id;
           const showAvatar = !isMine && (i === 0 || filteredMessages[i - 1]?.sender_id !== msg.sender_id);
+          const isRead = isMine && !!othersLastRead && msg.created_at <= othersLastRead;
           return (
             <MessageBubble
               key={msg.id}
@@ -181,6 +205,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
               onForward={(m) => setForwardMsg(m)}
               onEdit={editMessage}
               currentUserId={user?.id || ""}
+              isRead={isRead}
             />
           );
         })}

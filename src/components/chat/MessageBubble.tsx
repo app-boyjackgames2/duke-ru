@@ -1,6 +1,6 @@
 import { MessageWithSender } from "@/hooks/useMessages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X } from "lucide-react";
+import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -34,9 +34,10 @@ interface Props {
   onForward?: (message: MessageWithSender) => void;
   onEdit?: (messageId: string, newContent: string) => void;
   currentUserId: string;
+  isRead?: boolean;
 }
 
-export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId }: Props) {
+export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId, isRead }: Props) {
   const [showEmojis, setShowEmojis] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
@@ -122,10 +123,15 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
         <div className="relative">
           <div className={`px-3 py-2 rounded-2xl ${isMine ? "bg-duke-sent text-primary-foreground rounded-tr-md" : "bg-duke-received text-foreground rounded-tl-md"}`}>
             {renderContent()}
-            <p className={`text-[10px] mt-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+            <span className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
               {format(new Date(message.created_at), "HH:mm")}
               {isEdited && " (ред.)"}
-            </p>
+              {isMine && (
+                isRead
+                  ? <CheckCheck className="w-3.5 h-3.5 text-duke-online ml-0.5" />
+                  : <Check className="w-3.5 h-3.5 ml-0.5" />
+              )}
+            </span>
           </div>
 
           {/* Actions */}
