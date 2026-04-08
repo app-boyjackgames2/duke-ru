@@ -34,6 +34,7 @@ interface Props {
   onForward?: (message: MessageWithSender) => void;
   onEdit?: (messageId: string, newContent: string) => void;
   currentUserId: string;
+  isRead?: boolean;
 }
 
 export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId }: Props) {

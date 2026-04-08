@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MessageWithSender, useMessages } from "@/hooks/useMessages";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/i18n/translations";
 import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
+import { supabase } from "@/integrations/supabase/client";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
