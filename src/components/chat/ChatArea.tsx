@@ -192,6 +192,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
         {filteredMessages.map((msg, i) => {
           const isMine = msg.sender_id === user?.id;
           const showAvatar = !isMine && (i === 0 || filteredMessages[i - 1]?.sender_id !== msg.sender_id);
+          const isRead = isMine && !!othersLastRead && msg.created_at <= othersLastRead;
           return (
             <MessageBubble
               key={msg.id}
@@ -204,6 +205,7 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
               onForward={(m) => setForwardMsg(m)}
               onEdit={editMessage}
               currentUserId={user?.id || ""}
+              isRead={isRead}
             />
           );
         })}
