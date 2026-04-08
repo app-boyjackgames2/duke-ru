@@ -1,43 +1,26 @@
 
 
-# DUKE — Уведомления + Редактирование канала + Поделиться
+# DUKE — AlertDialog для подтверждения удаления чата
 
-## 1. Уведомления при бане и исключении
+## Что будет сделано
 
-**Файл**: `src/components/channels/ChannelView.tsx`
+**Файл**: `src/components/chat/ChatSidebar.tsx`
 
-В `handleKick` и `handleBan` — после успешного действия показывать toast с именем пользователя:
-- Kick: `toast.success("Пользователь {username} исключён из канала")`
-- Ban: `toast.success("Пользователь {username} заблокирован")`
+Заменить мгновенное удаление чата на подтверждение через `AlertDialog`:
 
-Добавить новые ключи в `src/i18n/translations.ts`:
-- `user_kicked`, `user_banned`, `channel_edited`, `edit_channel`, `share_channel`, `link_copied`, `channel_name`, `channel_description`, `access_type_label`, `subscribers`
+1. Импортировать компоненты `AlertDialog` из `@/components/ui/alert-dialog`
+2. Добавить состояние `deletingConvId` для хранения ID чата, который пользователь хочет удалить
+3. Кнопка Trash2 теперь открывает AlertDialog вместо немедленного удаления
+4. AlertDialog показывает заголовок и описание с подтверждением
+5. Кнопка «Удалить» выполняет `leaveConversation`, кнопка «Отмена» закрывает диалог
 
-## 2. Редактирование канала в ChannelView
+**Файл**: `src/i18n/translations.ts`
 
-**Файл**: `src/components/channels/ChannelView.tsx`
+Добавить ключи: `confirm_delete_chat`, `confirm_delete_chat_desc`, `cancel`, `delete`
 
-Добавить кнопку редактирования (Pencil icon) в header рядом с кнопкой удаления (видна только создателю). По клику — Dialog с формой:
-- Поле «Название канала» (prefilled)
-- Поле «Описание» (prefilled)
-- Select «Тип доступа» (open / link / restricted)
-- Кнопка «Сохранить» → `supabase.from("channels").update({...}).eq("id", channel.id)` → `onRefresh()`
-
-## 3. Кнопка «Поделиться» в ChannelView
-
-**Файл**: `src/components/channels/ChannelView.tsx`
-
-Добавить кнопку Share2 в header. По клику — копировать `window.location.origin + "/channel/" + channel.name` в буфер обмена, показать toast.
-
-## 4. ChannelPage.tsx — i18n
-
-**Файл**: `src/pages/ChannelPage.tsx`
-
-Заменить хардкод-строки на `t(key, lang)` с использованием `useLanguage`. Всё остальное (маршрут, подписка, типы доступа, кнопка «Поделиться») уже реализовано.
-
-## Порядок
-1. Добавить i18n ключи в `translations.ts`
-2. Уведомления в `handleKick`/`handleBan` в `ChannelView.tsx`
-3. Кнопки «Редактировать» и «Поделиться» в header `ChannelView.tsx`
-4. i18n в `ChannelPage.tsx`
+## Поведение
+- Hover на чате → иконка корзины
+- Клик по корзине → AlertDialog: «Удалить чат? Вы больше не будете видеть этот чат»
+- «Удалить» → удаление + toast
+- «Отмена» → закрытие диалога
 
