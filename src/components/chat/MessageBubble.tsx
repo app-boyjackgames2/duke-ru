@@ -1,6 +1,6 @@
 import { MessageWithSender } from "@/hooks/useMessages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X, CheckCheck } from "lucide-react";
+import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X, CheckCheck, Pin, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
