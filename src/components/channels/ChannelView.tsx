@@ -62,6 +62,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadEta, setUploadEta] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
