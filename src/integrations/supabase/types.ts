@@ -217,18 +217,21 @@ export type Database = {
           conversation_id: string
           id: string
           joined_at: string
+          role: string
           user_id: string
         }
         Insert: {
           conversation_id: string
           id?: string
           joined_at?: string
+          role?: string
           user_id: string
         }
         Update: {
           conversation_id?: string
           id?: string
           joined_at?: string
+          role?: string
           user_id?: string
         }
         Relationships: [
@@ -360,6 +363,30 @@ export type Database = {
           },
         ]
       }
+      pinned_messages: {
+        Row: {
+          conversation_id: string
+          id: string
+          message_id: string
+          pinned_at: string
+          pinned_by: string
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          message_id: string
+          pinned_at?: string
+          pinned_by: string
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          message_id?: string
+          pinned_at?: string
+          pinned_by?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -411,6 +438,10 @@ export type Database = {
       }
       is_channel_mod: {
         Args: { _channel_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_conversation_admin: {
+        Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
       is_conversation_member: {
