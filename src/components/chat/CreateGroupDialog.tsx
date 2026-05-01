@@ -102,10 +102,10 @@ export default function CreateGroupDialog({ open, onOpenChange, onCreated }: Pro
         return;
       }
 
-      const members = [user.id, ...selected.map((s) => s.user_id)].map((uid) => ({
-        conversation_id: newConv.id,
-        user_id: uid,
-      }));
+      const members = [
+        { conversation_id: newConv.id, user_id: user.id, role: "admin" },
+        ...selected.map((s) => ({ conversation_id: newConv.id, user_id: s.user_id, role: "member" })),
+      ];
 
       const { error: memErr } = await supabase.from("conversation_members").insert(members);
 
