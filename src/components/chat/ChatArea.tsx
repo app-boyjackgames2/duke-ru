@@ -8,7 +8,7 @@ import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
 import CallHistoryPanel from "./CallHistoryPanel";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, Search, X, History } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
