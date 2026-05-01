@@ -143,6 +143,11 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onReply}><Reply className="w-3.5 h-3.5" /></Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => onForward?.(message)}><Forward className="w-3.5 h-3.5" /></Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowEmojis(!showEmojis)}><SmilePlus className="w-3.5 h-3.5" /></Button>
+            {canPin && onTogglePin && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => onTogglePin(message.id)} title={isPinned ? "Открепить" : "Закрепить"}>
+                {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              </Button>
+            )}
             {isMine && message.type === "text" && (
               <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditText(message.content || ""); setEditing(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
             )}
