@@ -40,6 +40,8 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
+  const { pinned, canPin, pinMessage, unpinMessage, isPinned } = usePinnedMessages(conversation?.id || null);
+  const [pinnedIndex, setPinnedIndex] = useState(0);
 
   // Fetch other members' last_read_at
   const fetchReadReceipts = useCallback(async () => {
