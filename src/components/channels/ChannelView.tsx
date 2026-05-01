@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2 } from "lucide-react";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2, Video as VideoIcon } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +62,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadEta, setUploadEta] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
@@ -202,15 +205,53 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
     if (attachedFile) {
       setUploading(true);
+      setUploadProgress(0);
+      setUploadEta("");
       const ext = attachedFile.name.split(".").pop();
       const path = `channels/${channel.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("chat-attachments").upload(path, attachedFile);
-      if (error) {
+
+      // Get a signed upload URL for progress tracking via XHR
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUploadUrl(path);
+
+      if (signErr || !signed) {
         toast.error(t("file_upload_error", lang));
         setSending(false);
         setUploading(false);
         return;
       }
+
+      const startTime = Date.now();
+      const uploadOk = await new Promise<boolean>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", signed.signedUrl, true);
+        xhr.setRequestHeader("Content-Type", attachedFile.type || "application/octet-stream");
+        xhr.upload.onprogress = (e) => {
+          if (!e.lengthComputable) return;
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(pct);
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (e.loaded > 0 && elapsed > 0.5) {
+            const speed = e.loaded / elapsed; // bytes/sec
+            const remaining = (e.total - e.loaded) / speed;
+            const mm = Math.floor(remaining / 60);
+            const ss = Math.max(0, Math.round(remaining % 60));
+            setUploadEta(mm > 0 ? `${mm}м ${ss}с` : `${ss}с`);
+          }
+        };
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+        xhr.onerror = () => resolve(false);
+        xhr.send(attachedFile);
+      });
+
+      if (!uploadOk) {
+        toast.error(t("file_upload_error", lang));
+        setSending(false);
+        setUploading(false);
+        return;
+      }
+
       const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
       if (attachedFile.type.startsWith("image/")) {
         imageUrl = urlData.publicUrl;
@@ -219,6 +260,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         fileName = attachedFile.name;
       }
       setUploading(false);
+      setUploadProgress(0);
+      setUploadEta("");
     }
 
     await createPost(newPost.trim() || (fileName || t("file", lang)), imageUrl, fileUrl, fileName);
@@ -365,11 +408,21 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
                 {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
                 {(post as any).file_url && !(post as any).image_url && (
-                  <a href={(post as any).file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
-                    <FileText className="w-4 h-4" />
-                    {(post as any).file_name || t("file", lang)}
-                    <Download className="w-3 h-3" />
-                  </a>
+                  (() => {
+                    const url = (post as any).file_url as string;
+                    const name = ((post as any).file_name || "") as string;
+                    const isVideo = /\.(mp4|webm|mov|m4v|ogv)(\?|$)/i.test(url) || /\.(mp4|webm|mov|m4v|ogv)$/i.test(name);
+                    if (isVideo) {
+                      return <video src={url} controls className="mt-3 rounded-lg max-w-md w-full" preload="metadata" />;
+                    }
+                    return (
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                        <FileText className="w-4 h-4" />
+                        {name || t("file", lang)}
+                        <Download className="w-3 h-3" />
+                      </a>
+                    );
+                  })()
                 )}
               </div>
             );
@@ -381,20 +434,37 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         <div className="border-t border-border bg-card/50 backdrop-blur-sm p-3">
           {attachedFile && (
             <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
-              <Paperclip className="w-3.5 h-3.5" />
-              <span className="truncate flex-1">{attachedFile.name}</span>
-              <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+              {attachedFile.type.startsWith("video/") ? <VideoIcon className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
+              <span className="truncate flex-1">{attachedFile.name} · {(attachedFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+              {!uploading && (
+                <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+              )}
+            </div>
+          )}
+          {uploading && (
+            <div className="mb-2 space-y-1">
+              <Progress value={uploadProgress} className="h-1.5" />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Загрузка… {uploadProgress}%</span>
+                {uploadEta && <span>осталось ~{uploadEta}</span>}
+              </div>
             </div>
           )}
           <div className="flex gap-2">
             <input
               ref={fileInputRef}
               type="file"
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                  if (f.size > 50 * 1024 * 1024) { toast.error(t("file_too_large", lang)); return; }
+                  const isVideo = f.type.startsWith("video/");
+                  const limit = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+                  if (f.size > limit) {
+                    toast.error(isVideo ? "Видео слишком большое (макс. 500 MB)" : t("file_too_large", lang));
+                    return;
+                  }
                   setAttachedFile(f);
                 }
                 e.target.value = "";

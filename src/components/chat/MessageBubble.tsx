@@ -1,6 +1,6 @@
 import { MessageWithSender } from "@/hooks/useMessages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X, CheckCheck } from "lucide-react";
+import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X, CheckCheck, Pin, PinOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -35,9 +35,12 @@ interface Props {
   onEdit?: (messageId: string, newContent: string) => void;
   currentUserId: string;
   isRead?: boolean;
+  isPinned?: boolean;
+  canPin?: boolean;
+  onTogglePin?: (messageId: string) => void;
 }
 
-export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId, isRead }: Props) {
+export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId, isRead, isPinned, canPin, onTogglePin }: Props) {
   const [showEmojis, setShowEmojis] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
@@ -124,6 +127,7 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
           <div className={`px-3 py-2 rounded-2xl ${isMine ? "bg-duke-sent text-primary-foreground rounded-tr-md" : "bg-duke-received text-foreground rounded-tl-md"}`}>
             {renderContent()}
             <span className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+              {isPinned && <Pin className="w-3 h-3" />}
               {format(new Date(message.created_at), "HH:mm")}
               {isEdited && " (ред.)"}
               {isMine && (
@@ -139,6 +143,11 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={onReply}><Reply className="w-3.5 h-3.5" /></Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => onForward?.(message)}><Forward className="w-3.5 h-3.5" /></Button>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setShowEmojis(!showEmojis)}><SmilePlus className="w-3.5 h-3.5" /></Button>
+            {canPin && onTogglePin && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={() => onTogglePin(message.id)} title={isPinned ? "Открепить" : "Закрепить"}>
+                {isPinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+              </Button>
+            )}
             {isMine && message.type === "text" && (
               <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => { setEditText(message.content || ""); setEditing(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
             )}

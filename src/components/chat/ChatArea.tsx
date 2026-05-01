@@ -8,7 +8,7 @@ import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
 import CallHistoryPanel from "./CallHistoryPanel";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, Search, X, History } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
@@ -18,6 +18,7 @@ import { t } from "@/i18n/translations";
 import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { usePinnedMessages } from "@/hooks/usePinnedMessages";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
@@ -39,6 +40,8 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
+  const { pinned, canPin, pinMessage, unpinMessage, isPinned } = usePinnedMessages(conversation?.id || null);
+  const [pinnedIndex, setPinnedIndex] = useState(0);
 
   // Fetch other members' last_read_at
   const fetchReadReceipts = useCallback(async () => {
@@ -168,6 +171,42 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
         </div>
       </div>
 
+      {/* Pinned banner */}
+      {pinned.length > 0 && pinned[pinnedIndex]?.message && (
+        <div className="px-3 py-2 border-b border-border bg-card/40 flex items-center gap-2">
+          <Pin className="w-4 h-4 text-primary flex-shrink-0" />
+          <button
+            onClick={() => {
+              const el = document.getElementById(`msg-${pinned[pinnedIndex].message_id}`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className="flex-1 text-left min-w-0"
+          >
+            <p className="text-[11px] text-primary font-medium leading-tight">
+              Закреплённое {pinned.length > 1 ? `(${pinnedIndex + 1}/${pinned.length})` : ""}
+            </p>
+            <p className="text-xs text-foreground truncate">
+              {pinned[pinnedIndex].message?.content || (pinned[pinnedIndex].message?.type === "image" ? "📷 Фото" : pinned[pinnedIndex].message?.type === "voice" ? "🎙 Голосовое" : "📎 Файл")}
+            </p>
+          </button>
+          {pinned.length > 1 && (
+            <div className="flex flex-col">
+              <Button variant="ghost" size="icon" className="h-4 w-6" onClick={() => setPinnedIndex((i) => (i - 1 + pinned.length) % pinned.length)}>
+                <ChevronUp className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-4 w-6" onClick={() => setPinnedIndex((i) => (i + 1) % pinned.length)}>
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+          {canPin && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => unpinMessage(pinned[pinnedIndex].message_id)} title="Открепить">
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Search bar */}
       {searchOpen && (
         <div className="px-4 py-2 border-b border-border bg-card/30 flex items-center gap-2">
@@ -193,20 +232,25 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
           const isMine = msg.sender_id === user?.id;
           const showAvatar = !isMine && (i === 0 || filteredMessages[i - 1]?.sender_id !== msg.sender_id);
           const isRead = isMine && !!othersLastRead && msg.created_at <= othersLastRead;
+          const pinnedFlag = isPinned(msg.id);
           return (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isMine={isMine}
-              showAvatar={showAvatar}
-              onReply={() => setReplyTo(msg)}
-              onReaction={(emoji) => toggleReaction(msg.id, emoji)}
-              onDelete={deleteMessage}
-              onForward={(m) => setForwardMsg(m)}
-              onEdit={editMessage}
-              currentUserId={user?.id || ""}
-              isRead={isRead}
-            />
+            <div key={msg.id} id={`msg-${msg.id}`}>
+              <MessageBubble
+                message={msg}
+                isMine={isMine}
+                showAvatar={showAvatar}
+                onReply={() => setReplyTo(msg)}
+                onReaction={(emoji) => toggleReaction(msg.id, emoji)}
+                onDelete={deleteMessage}
+                onForward={(m) => setForwardMsg(m)}
+                onEdit={editMessage}
+                currentUserId={user?.id || ""}
+                isRead={isRead}
+                isPinned={pinnedFlag}
+                canPin={canPin}
+                onTogglePin={(id) => (pinnedFlag ? unpinMessage(id) : pinMessage(id))}
+              />
+            </div>
           );
         })}
         {typingUsers.length > 0 && (
