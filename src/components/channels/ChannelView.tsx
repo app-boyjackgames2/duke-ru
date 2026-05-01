@@ -205,15 +205,53 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
     if (attachedFile) {
       setUploading(true);
+      setUploadProgress(0);
+      setUploadEta("");
       const ext = attachedFile.name.split(".").pop();
       const path = `channels/${channel.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("chat-attachments").upload(path, attachedFile);
-      if (error) {
+
+      // Get a signed upload URL for progress tracking via XHR
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUploadUrl(path);
+
+      if (signErr || !signed) {
         toast.error(t("file_upload_error", lang));
         setSending(false);
         setUploading(false);
         return;
       }
+
+      const startTime = Date.now();
+      const uploadOk = await new Promise<boolean>((resolve) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", signed.signedUrl, true);
+        xhr.setRequestHeader("Content-Type", attachedFile.type || "application/octet-stream");
+        xhr.upload.onprogress = (e) => {
+          if (!e.lengthComputable) return;
+          const pct = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(pct);
+          const elapsed = (Date.now() - startTime) / 1000;
+          if (e.loaded > 0 && elapsed > 0.5) {
+            const speed = e.loaded / elapsed; // bytes/sec
+            const remaining = (e.total - e.loaded) / speed;
+            const mm = Math.floor(remaining / 60);
+            const ss = Math.max(0, Math.round(remaining % 60));
+            setUploadEta(mm > 0 ? `${mm}м ${ss}с` : `${ss}с`);
+          }
+        };
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+        xhr.onerror = () => resolve(false);
+        xhr.send(attachedFile);
+      });
+
+      if (!uploadOk) {
+        toast.error(t("file_upload_error", lang));
+        setSending(false);
+        setUploading(false);
+        return;
+      }
+
       const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
       if (attachedFile.type.startsWith("image/")) {
         imageUrl = urlData.publicUrl;
@@ -222,6 +260,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         fileName = attachedFile.name;
       }
       setUploading(false);
+      setUploadProgress(0);
+      setUploadEta("");
     }
 
     await createPost(newPost.trim() || (fileName || t("file", lang)), imageUrl, fileUrl, fileName);
