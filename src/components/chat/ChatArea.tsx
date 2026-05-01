@@ -171,6 +171,42 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
         </div>
       </div>
 
+      {/* Pinned banner */}
+      {pinned.length > 0 && pinned[pinnedIndex]?.message && (
+        <div className="px-3 py-2 border-b border-border bg-card/40 flex items-center gap-2">
+          <Pin className="w-4 h-4 text-primary flex-shrink-0" />
+          <button
+            onClick={() => {
+              const el = document.getElementById(`msg-${pinned[pinnedIndex].message_id}`);
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }}
+            className="flex-1 text-left min-w-0"
+          >
+            <p className="text-[11px] text-primary font-medium leading-tight">
+              Закреплённое {pinned.length > 1 ? `(${pinnedIndex + 1}/${pinned.length})` : ""}
+            </p>
+            <p className="text-xs text-foreground truncate">
+              {pinned[pinnedIndex].message?.content || (pinned[pinnedIndex].message?.type === "image" ? "📷 Фото" : pinned[pinnedIndex].message?.type === "voice" ? "🎙 Голосовое" : "📎 Файл")}
+            </p>
+          </button>
+          {pinned.length > 1 && (
+            <div className="flex flex-col">
+              <Button variant="ghost" size="icon" className="h-4 w-6" onClick={() => setPinnedIndex((i) => (i - 1 + pinned.length) % pinned.length)}>
+                <ChevronUp className="w-3 h-3" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-4 w-6" onClick={() => setPinnedIndex((i) => (i + 1) % pinned.length)}>
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </div>
+          )}
+          {canPin && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => unpinMessage(pinned[pinnedIndex].message_id)} title="Открепить">
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Search bar */}
       {searchOpen && (
         <div className="px-4 py-2 border-b border-border bg-card/30 flex items-center gap-2">
