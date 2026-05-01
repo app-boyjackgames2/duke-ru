@@ -434,20 +434,37 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         <div className="border-t border-border bg-card/50 backdrop-blur-sm p-3">
           {attachedFile && (
             <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
-              <Paperclip className="w-3.5 h-3.5" />
-              <span className="truncate flex-1">{attachedFile.name}</span>
-              <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+              {attachedFile.type.startsWith("video/") ? <VideoIcon className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
+              <span className="truncate flex-1">{attachedFile.name} · {(attachedFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+              {!uploading && (
+                <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+              )}
+            </div>
+          )}
+          {uploading && (
+            <div className="mb-2 space-y-1">
+              <Progress value={uploadProgress} className="h-1.5" />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>Загрузка… {uploadProgress}%</span>
+                {uploadEta && <span>осталось ~{uploadEta}</span>}
+              </div>
             </div>
           )}
           <div className="flex gap-2">
             <input
               ref={fileInputRef}
               type="file"
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,.txt"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) {
-                  if (f.size > 50 * 1024 * 1024) { toast.error(t("file_too_large", lang)); return; }
+                  const isVideo = f.type.startsWith("video/");
+                  const limit = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+                  if (f.size > limit) {
+                    toast.error(isVideo ? "Видео слишком большое (макс. 500 MB)" : t("file_too_large", lang));
+                    return;
+                  }
                   setAttachedFile(f);
                 }
                 e.target.value = "";
