@@ -35,9 +35,12 @@ interface Props {
   onEdit?: (messageId: string, newContent: string) => void;
   currentUserId: string;
   isRead?: boolean;
+  isPinned?: boolean;
+  canPin?: boolean;
+  onTogglePin?: (messageId: string) => void;
 }
 
-export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId, isRead }: Props) {
+export default function MessageBubble({ message, isMine, showAvatar, onReply, onReaction, onDelete, onForward, onEdit, currentUserId, isRead, isPinned, canPin, onTogglePin }: Props) {
   const [showEmojis, setShowEmojis] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
