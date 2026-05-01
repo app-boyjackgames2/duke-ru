@@ -18,6 +18,7 @@ import { t } from "@/i18n/translations";
 import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { usePinnedMessages } from "@/hooks/usePinnedMessages";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
