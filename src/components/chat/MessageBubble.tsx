@@ -127,6 +127,7 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
           <div className={`px-3 py-2 rounded-2xl ${isMine ? "bg-duke-sent text-primary-foreground rounded-tr-md" : "bg-duke-received text-foreground rounded-tl-md"}`}>
             {renderContent()}
             <span className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+              {isPinned && <Pin className="w-3 h-3" />}
               {format(new Date(message.created_at), "HH:mm")}
               {isEdited && " (ред.)"}
               {isMine && (
