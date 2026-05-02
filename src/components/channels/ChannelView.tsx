@@ -64,6 +64,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadEta, setUploadEta] = useState<string>("");
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
