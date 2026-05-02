@@ -197,9 +197,26 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     toast.success(t("link_copied", lang));
   };
 
+  const resetUpload = () => {
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadEta("");
+    xhrRef.current = null;
+  };
+
+  const cancelUpload = () => {
+    if (xhrRef.current) {
+      try { xhrRef.current.abort(); } catch {}
+    }
+    resetUpload();
+    setUploadFailed(false);
+    toast.info("Загрузка отменена");
+  };
+
   const handlePost = async () => {
     if (!newPost.trim() && !attachedFile) return;
     setSending(true);
+    setUploadFailed(false);
 
     let fileUrl: string | undefined;
     let fileName: string | undefined;
@@ -220,13 +237,15 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       if (signErr || !signed) {
         toast.error(t("file_upload_error", lang));
         setSending(false);
-        setUploading(false);
+        setUploadFailed(true);
+        resetUpload();
         return;
       }
 
       const startTime = Date.now();
-      const uploadOk = await new Promise<boolean>((resolve) => {
+      const result = await new Promise<"ok" | "error" | "abort">((resolve) => {
         const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
         xhr.open("PUT", signed.signedUrl, true);
         xhr.setRequestHeader("Content-Type", attachedFile.type || "application/octet-stream");
         xhr.upload.onprogress = (e) => {
@@ -242,15 +261,19 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             setUploadEta(mm > 0 ? `${mm}м ${ss}с` : `${ss}с`);
           }
         };
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
-        xhr.onerror = () => resolve(false);
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300 ? "ok" : "error");
+        xhr.onerror = () => resolve("error");
+        xhr.onabort = () => resolve("abort");
         xhr.send(attachedFile);
       });
 
-      if (!uploadOk) {
-        toast.error(t("file_upload_error", lang));
+      if (result !== "ok") {
+        if (result === "error") {
+          toast.error(t("file_upload_error", lang));
+          setUploadFailed(true);
+        }
         setSending(false);
-        setUploading(false);
+        resetUpload();
         return;
       }
 
@@ -261,14 +284,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         fileUrl = urlData.publicUrl;
         fileName = attachedFile.name;
       }
-      setUploading(false);
-      setUploadProgress(0);
-      setUploadEta("");
+      resetUpload();
     }
 
     await createPost(newPost.trim() || (fileName || t("file", lang)), imageUrl, fileUrl, fileName);
     setNewPost("");
     setAttachedFile(null);
+    setUploadFailed(false);
     setSending(false);
   };
 
