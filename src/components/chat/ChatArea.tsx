@@ -19,14 +19,17 @@ import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { usePinnedMessages } from "@/hooks/usePinnedMessages";
+import PinnedListDialog from "./PinnedListDialog";
+import GroupMembersDialog from "./GroupMembersDialog";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
   conversation: ConversationWithDetails | null;
   onCallStateChange?: (conversationId: string | null) => void;
+  onSelectConversation?: (conversationId: string) => void;
 }
 
-export default function ChatArea({ conversation, onCallStateChange }: Props) {
+export default function ChatArea({ conversation, onCallStateChange, onSelectConversation }: Props) {
   const { user } = useAuth();
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
@@ -40,8 +43,10 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
-  const { pinned, canPin, pinMessage, unpinMessage, isPinned } = usePinnedMessages(conversation?.id || null);
+  const { pinned, audit, canPin, pinMessage, unpinMessage, isPinned, convType } = usePinnedMessages(conversation?.id || null);
   const [pinnedIndex, setPinnedIndex] = useState(0);
+  const [pinnedListOpen, setPinnedListOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   // Fetch other members' last_read_at
   const fetchReadReceipts = useCallback(async () => {
