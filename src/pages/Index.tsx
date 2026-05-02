@@ -49,7 +49,7 @@ export default function Index() {
       {activeType === "channel" && activeChannel ? (
         <ChannelView channel={activeChannel} onRefresh={fetchChannels} />
       ) : (
-        <ChatArea conversation={activeConversation} onCallStateChange={setActiveCallConversationId} />
+        <ChatArea conversation={activeConversation} onCallStateChange={setActiveCallConversationId} onSelectConversation={(id) => { setActiveId(id); setActiveType("chat"); fetchConversations(); }} />
       )}
     </div>
   );
