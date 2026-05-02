@@ -102,15 +102,26 @@ export default function CreateGroupDialog({ open, onOpenChange, onCreated }: Pro
         return;
       }
 
-      const members = [
-        { conversation_id: newConv.id, user_id: user.id, role: "admin" },
-        ...selected.map((s) => ({ conversation_id: newConv.id, user_id: s.user_id, role: "member" })),
-      ];
+      // 1) Insert creator as admin first so RLS sees them as a member
+      const { error: selfErr } = await supabase
+        .from("conversation_members")
+        .insert({ conversation_id: newConv.id, user_id: user.id, role: "admin" });
 
-      const { error: memErr } = await supabase.from("conversation_members").insert(members);
+      if (selfErr) {
+        toast.error("Ошибка добавления создателя: " + selfErr.message);
+        setCreating(false);
+        return;
+      }
 
-      if (memErr) {
-        toast.error("Группа создана, но ошибка добавления участников");
+      // 2) Bulk insert remaining members
+      if (selected.length > 0) {
+        const others = selected.map((s) => ({ conversation_id: newConv.id, user_id: s.user_id, role: "member" }));
+        const { error: memErr } = await supabase.from("conversation_members").insert(others);
+        if (memErr) {
+          toast.error("Группа создана, но ошибка добавления участников: " + memErr.message);
+        } else {
+          toast.success("Группа создана!");
+        }
       } else {
         toast.success("Группа создана!");
       }
