@@ -282,6 +282,27 @@ export default function ChatArea({ conversation, onCallStateChange, onSelectConv
         message={forwardMsg}
         conversations={conversations}
       />
+
+      <PinnedListDialog
+        open={pinnedListOpen}
+        onOpenChange={setPinnedListOpen}
+        pinned={pinned}
+        audit={audit}
+        canPin={canPin}
+        convType={convType}
+        onJump={(id) => {
+          const el = document.getElementById(`msg-${id}`);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          el?.classList.add("ring-2", "ring-primary");
+          setTimeout(() => el?.classList.remove("ring-2", "ring-primary"), 1500);
+        }}
+        onUnpin={unpinMessage}
+        onSelectConversation={onSelectConversation}
+      />
+
+      {conversation.type === "group" && (
+        <GroupMembersDialog open={membersOpen} onOpenChange={setMembersOpen} conversationId={conversation.id} />
+      )}
     </div>
   );
 }
