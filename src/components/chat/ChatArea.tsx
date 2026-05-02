@@ -8,7 +8,7 @@ import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
 import CallHistoryPanel from "./CallHistoryPanel";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
@@ -19,14 +19,17 @@ import { formatDistanceToNow } from "date-fns";
 import { ru, enUS } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { usePinnedMessages } from "@/hooks/usePinnedMessages";
+import PinnedListDialog from "./PinnedListDialog";
+import GroupMembersDialog from "./GroupMembersDialog";
 import dukeIcon from "@/assets/duke-icon.jpeg";
 
 interface Props {
   conversation: ConversationWithDetails | null;
   onCallStateChange?: (conversationId: string | null) => void;
+  onSelectConversation?: (conversationId: string) => void;
 }
 
-export default function ChatArea({ conversation, onCallStateChange }: Props) {
+export default function ChatArea({ conversation, onCallStateChange, onSelectConversation }: Props) {
   const { user } = useAuth();
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
   const { conversations } = useConversations();
@@ -40,8 +43,10 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [othersLastRead, setOthersLastRead] = useState<string | null>(null);
-  const { pinned, canPin, pinMessage, unpinMessage, isPinned } = usePinnedMessages(conversation?.id || null);
+  const { pinned, audit, canPin, pinMessage, unpinMessage, isPinned, convType } = usePinnedMessages(conversation?.id || null);
   const [pinnedIndex, setPinnedIndex] = useState(0);
+  const [pinnedListOpen, setPinnedListOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   // Fetch other members' last_read_at
   const fetchReadReceipts = useCallback(async () => {
@@ -143,6 +148,17 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground relative" onClick={() => setPinnedListOpen(true)} title="Закреплённые">
+            <Pin className="w-4 h-4" />
+            {pinned.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] rounded-full min-w-[14px] h-[14px] px-1 flex items-center justify-center">{pinned.length}</span>
+            )}
+          </Button>
+          {conversation.type === "group" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setMembersOpen(true)} title="Участники">
+              <Users className="w-4 h-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => { setSearchOpen(!searchOpen); setSearchQuery(""); }}>
             <Search className="w-4 h-4" />
           </Button>
@@ -266,6 +282,27 @@ export default function ChatArea({ conversation, onCallStateChange }: Props) {
         message={forwardMsg}
         conversations={conversations}
       />
+
+      <PinnedListDialog
+        open={pinnedListOpen}
+        onOpenChange={setPinnedListOpen}
+        pinned={pinned}
+        audit={audit}
+        canPin={canPin}
+        convType={convType}
+        onJump={(id) => {
+          const el = document.getElementById(`msg-${id}`);
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          el?.classList.add("ring-2", "ring-primary");
+          setTimeout(() => el?.classList.remove("ring-2", "ring-primary"), 1500);
+        }}
+        onUnpin={unpinMessage}
+        onSelectConversation={onSelectConversation}
+      />
+
+      {conversation.type === "group" && (
+        <GroupMembersDialog open={membersOpen} onOpenChange={setMembersOpen} conversationId={conversation.id} />
+      )}
     </div>
   );
 }

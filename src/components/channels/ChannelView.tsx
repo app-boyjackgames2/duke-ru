@@ -64,6 +64,8 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadEta, setUploadEta] = useState<string>("");
+  const [uploadFailed, setUploadFailed] = useState(false);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
 
@@ -195,9 +197,26 @@ export default function ChannelView({ channel, onRefresh }: Props) {
     toast.success(t("link_copied", lang));
   };
 
+  const resetUpload = () => {
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadEta("");
+    xhrRef.current = null;
+  };
+
+  const cancelUpload = () => {
+    if (xhrRef.current) {
+      try { xhrRef.current.abort(); } catch {}
+    }
+    resetUpload();
+    setUploadFailed(false);
+    toast.info("Загрузка отменена");
+  };
+
   const handlePost = async () => {
     if (!newPost.trim() && !attachedFile) return;
     setSending(true);
+    setUploadFailed(false);
 
     let fileUrl: string | undefined;
     let fileName: string | undefined;
@@ -218,13 +237,15 @@ export default function ChannelView({ channel, onRefresh }: Props) {
       if (signErr || !signed) {
         toast.error(t("file_upload_error", lang));
         setSending(false);
-        setUploading(false);
+        setUploadFailed(true);
+        resetUpload();
         return;
       }
 
       const startTime = Date.now();
-      const uploadOk = await new Promise<boolean>((resolve) => {
+      const result = await new Promise<"ok" | "error" | "abort">((resolve) => {
         const xhr = new XMLHttpRequest();
+        xhrRef.current = xhr;
         xhr.open("PUT", signed.signedUrl, true);
         xhr.setRequestHeader("Content-Type", attachedFile.type || "application/octet-stream");
         xhr.upload.onprogress = (e) => {
@@ -240,15 +261,19 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             setUploadEta(mm > 0 ? `${mm}м ${ss}с` : `${ss}с`);
           }
         };
-        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
-        xhr.onerror = () => resolve(false);
+        xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300 ? "ok" : "error");
+        xhr.onerror = () => resolve("error");
+        xhr.onabort = () => resolve("abort");
         xhr.send(attachedFile);
       });
 
-      if (!uploadOk) {
-        toast.error(t("file_upload_error", lang));
+      if (result !== "ok") {
+        if (result === "error") {
+          toast.error(t("file_upload_error", lang));
+          setUploadFailed(true);
+        }
         setSending(false);
-        setUploading(false);
+        resetUpload();
         return;
       }
 
@@ -259,14 +284,13 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         fileUrl = urlData.publicUrl;
         fileName = attachedFile.name;
       }
-      setUploading(false);
-      setUploadProgress(0);
-      setUploadEta("");
+      resetUpload();
     }
 
     await createPost(newPost.trim() || (fileName || t("file", lang)), imageUrl, fileUrl, fileName);
     setNewPost("");
     setAttachedFile(null);
+    setUploadFailed(false);
     setSending(false);
   };
 
@@ -436,17 +460,25 @@ export default function ChannelView({ channel, onRefresh }: Props) {
             <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
               {attachedFile.type.startsWith("video/") ? <VideoIcon className="w-3.5 h-3.5" /> : <Paperclip className="w-3.5 h-3.5" />}
               <span className="truncate flex-1">{attachedFile.name} · {(attachedFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+              {uploadFailed && !uploading && (
+                <button onClick={handlePost} className="text-primary hover:underline font-medium">Повторить</button>
+              )}
               {!uploading && (
-                <button onClick={() => setAttachedFile(null)} className="text-destructive hover:text-destructive/80"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => { setAttachedFile(null); setUploadFailed(false); }} className="text-destructive hover:text-destructive/80" title="Убрать">
+                  <X className="w-3.5 h-3.5" />
+                </button>
               )}
             </div>
           )}
           {uploading && (
             <div className="mb-2 space-y-1">
               <Progress value={uploadProgress} className="h-1.5" />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
+              <div className="flex justify-between items-center text-[11px] text-muted-foreground">
                 <span>Загрузка… {uploadProgress}%</span>
-                {uploadEta && <span>осталось ~{uploadEta}</span>}
+                <div className="flex items-center gap-2">
+                  {uploadEta && <span>осталось ~{uploadEta}</span>}
+                  <button onClick={cancelUpload} className="text-destructive hover:underline">Отмена</button>
+                </div>
               </div>
             </div>
           )}
