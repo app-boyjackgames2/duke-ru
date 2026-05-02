@@ -8,7 +8,7 @@ import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
 import CallHistoryPanel from "./CallHistoryPanel";
 import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
-import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown } from "lucide-react";
+import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTypingIndicator } from "@/hooks/useTypingIndicator";
@@ -148,6 +148,17 @@ export default function ChatArea({ conversation, onCallStateChange, onSelectConv
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground relative" onClick={() => setPinnedListOpen(true)} title="Закреплённые">
+            <Pin className="w-4 h-4" />
+            {pinned.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[9px] rounded-full min-w-[14px] h-[14px] px-1 flex items-center justify-center">{pinned.length}</span>
+            )}
+          </Button>
+          {conversation.type === "group" && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setMembersOpen(true)} title="Участники">
+              <Users className="w-4 h-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => { setSearchOpen(!searchOpen); setSearchQuery(""); }}>
             <Search className="w-4 h-4" />
           </Button>
