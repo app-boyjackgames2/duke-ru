@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2, Video as VideoIcon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import StreamsList from "./streams/StreamsList";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2, Video as VideoIcon, Radio } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
