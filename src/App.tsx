@@ -11,6 +11,7 @@ import Signup from "./pages/Signup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ChannelPage from "./pages/ChannelPage";
+import StreamPlayerPage from "./pages/StreamPlayer";
 
 const queryClient = new QueryClient();
 
