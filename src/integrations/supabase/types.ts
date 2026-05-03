@@ -450,6 +450,142 @@ export type Database = {
         }
         Relationships: []
       }
+      stream_videos: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          file_name: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          position: number
+          stream_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          file_name?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          position?: number
+          stream_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          file_name?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          position?: number
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_videos_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stream_viewers: {
+        Row: {
+          id: string
+          joined_at: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_viewers_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      streams: {
+        Row: {
+          access_type: string
+          actual_ended_at: string | null
+          actual_started_at: string | null
+          auto_end: boolean
+          auto_start: boolean
+          channel_id: string
+          created_at: string
+          created_by: string
+          current_index: number
+          current_started_at: string | null
+          description: string | null
+          ends_at: string | null
+          id: string
+          loop_video: boolean
+          mode: string
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          access_type?: string
+          actual_ended_at?: string | null
+          actual_started_at?: string | null
+          auto_end?: boolean
+          auto_start?: boolean
+          channel_id: string
+          created_at?: string
+          created_by: string
+          current_index?: number
+          current_started_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          loop_video?: boolean
+          mode: string
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          access_type?: string
+          actual_ended_at?: string | null
+          actual_started_at?: string | null
+          auto_end?: boolean
+          auto_start?: boolean
+          channel_id?: string
+          created_at?: string
+          created_by?: string
+          current_index?: number
+          current_started_at?: string | null
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          loop_video?: boolean
+          mode?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
