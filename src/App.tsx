@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/channel/:channelName" element={<ChannelPage />} />
+            <Route path="/channel/:channelName/stream/:streamId" element={<StreamPlayerPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
