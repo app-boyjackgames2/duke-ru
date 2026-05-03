@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2, Video as VideoIcon } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import StreamsList from "./streams/StreamsList";
+import { Megaphone, Send, Loader2, UserPlus, Trash2, Pencil, Check, X, Paperclip, FileText, Download, Users, Shield, ShieldAlert, Ban, UserMinus, Share2, Video as VideoIcon, Radio } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
@@ -366,6 +368,12 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         </div>
       </div>
 
+      <Tabs defaultValue="posts" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="mx-3 mt-2 self-start">
+          <TabsTrigger value="posts"><Megaphone className="w-3.5 h-3.5 mr-1" />Посты</TabsTrigger>
+          <TabsTrigger value="streams"><Radio className="w-3.5 h-3.5 mr-1" />Трансляции</TabsTrigger>
+        </TabsList>
+        <TabsContent value="posts" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
       {/* Posts */}
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-4">
         {loading ? (
@@ -522,6 +530,11 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           <p className="text-sm text-muted-foreground">{t("no_post_permission", lang)}</p>
         </div>
       )}
+        </TabsContent>
+        <TabsContent value="streams" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+          <StreamsList channelId={channel.id} channelName={channel.name} canModerate={canModerate} />
+        </TabsContent>
+      </Tabs>
 
       <InviteToChannelDialog open={showInvite} onOpenChange={setShowInvite} channelId={channel.id} onInvited={onRefresh} />
 

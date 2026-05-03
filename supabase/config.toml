@@ -1,1 +1,4 @@
 project_id = "ufxqxqgidpiviahenmsu"
+
+[functions.stream-scheduler]
+verify_jwt = false

@@ -11,6 +11,7 @@ import Signup from "./pages/Signup";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ChannelPage from "./pages/ChannelPage";
+import StreamPlayerPage from "./pages/StreamPlayer";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/channel/:channelName" element={<ChannelPage />} />
+            <Route path="/channel/:channelName/stream/:streamId" element={<StreamPlayerPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

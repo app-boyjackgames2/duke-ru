@@ -1,145 +1,79 @@
-# План работ
+# Система трансляций в каналах
 
-Запрос большой и часть пунктов несовместима с архитектурой проекта (React + Lovable Cloud / Supabase). Ниже — что реально сделаем сейчас, и что вынесено как «вне области» с честным объяснением.
+Добавляем во вкладку «Каналы» полноценные стримы: запланированный запуск, видео-плейлист или live-«Бар», уведомления и автозавершение.
 
-## Будет реализовано
+## База данных (миграция)
 
-### 1. Список закреплённых сообщений + быстрый переход
-- Кнопка-индикатор «📌 N» в шапке `ChatArea.tsx` рядом с поиском.
-- Новый диалог `PinnedListDialog.tsx`:
-  - Список всех закреплённых: автор (avatar + username), время (`formatDistanceToNow`), превью текста/типа (📷/🎙/📎), кто закрепил, когда.
-  - Клик по строке → закрывает диалог и скроллит к `#msg-{id}` в чате (используем уже существующий id).
-  - Клик по аватару автора → переход в его DM (через `createDirectConversation` из `useConversations`).
-  - Для админов группы — кнопка «Открепить» в каждой строке.
-- Хук `usePinnedMessages` уже отдаёт нужные данные; добавим в выборку `pinned_by` и подтянем профиль закрепившего.
+Новые таблицы в `public`:
 
-### 2. Экспорт закреплённых (CSV / JSON) — для админа группы
-- В `PinnedListDialog` две кнопки «Экспорт CSV» / «Экспорт JSON», видимые только если `canPin && convType === 'group'` (= админ группы) или в DM для обоих.
-- Генерация полностью на клиенте (Blob + `URL.createObjectURL`), без edge-функции.
-- Поля: `pinned_at, pinned_by_username, message_id, sender_username, message_created_at, type, content, file_url`.
+**streams**
+- `id uuid pk`, `channel_id uuid`, `created_by uuid`
+- `title text`, `description text`
+- `mode text check (mode in ('video','bar'))`
+- `access_type text check in ('open','link','restricted') default 'open'`
+- `starts_at timestamptz not null`
+- `ends_at timestamptz null` — custom end time
+- `actual_started_at`, `actual_ended_at timestamptz`
+- `status text check in ('scheduled','live','ended','cancelled') default 'scheduled'`
+- `loop_video bool default false`
+- `auto_start bool default true`
+- `auto_end bool default true`
+- `current_index int default 0` — индекс текущего видео (для синхронизации зрителей)
+- `current_started_at timestamptz` — когда запустился текущий ролик
+- `created_at`, `updated_at`
 
-### 3. Аудит закрепления/открепления
-- Новая таблица `pin_audit_log`:
-  - `id, conversation_id, message_id, actor_id, action ('pin'|'unpin'), created_at`
-  - RLS: SELECT — члены чата; INSERT — члены чата (actor = auth.uid()); UPDATE/DELETE запрещены.
-- Триггеры на `pinned_messages` AFTER INSERT / AFTER DELETE → запись в `pin_audit_log` (actor = `auth.uid()`).
-- Вкладка «Аудит» в `PinnedListDialog` (Tabs: «Закреплённые» / «Аудит»):
-  - Список действий: иконка pin/unpin, кто (avatar+username), когда, превью сообщения (если ещё существует).
+**stream_videos** (до 100 файлов)
+- `id uuid pk`, `stream_id uuid`, `position int`
+- `file_url text`, `file_name text`, `file_size bigint`, `duration_seconds numeric`
 
-### 4. Управление ролями участников группы
-- Новый диалог `GroupMembersDialog.tsx` (открывается из header `ChatArea` для групп):
-  - Список участников с ролью (admin/member).
-  - Для админа — Select «admin/member» рядом с каждым (кроме себя — нельзя понизить последнего админа: проверка на клиенте + защита в политике).
-  - Кнопка «Удалить из группы» (только админ, не себя).
-- Миграция RLS на `conversation_members`:
-  - Добавить policy UPDATE: `is_conversation_admin(auth.uid(), conversation_id)` (with check то же).
-  - Расширить DELETE: разрешить админам удалять других (`auth.uid() = user_id OR is_conversation_admin(...)`).
-- Защита «нельзя оставить группу без админа» — триггер BEFORE UPDATE/DELETE на `conversation_members`, который RAISE EXCEPTION, если последний admin превращается в member или удаляется.
+**stream_viewers** (presence/счётчик)
+- `id`, `stream_id`, `user_id`, `joined_at`
 
-### 5. Повтор/отмена/сброс загрузки в каналах
-В `ChannelView.tsx` (`xhr` уже используется для прогресса):
-- Сохранить ссылку на текущий `XMLHttpRequest` в ref.
-- Кнопка «Отмена» рядом с прогресс-баром → `xhr.abort()`, очистка `attachedFile`, `uploadProgress=0`, `uploadEta=""`, `uploading=false`.
-- При ошибке/abort — показать «Повторить» рядом с превью файла, по клику снова запускать `uploadFile()` с тем же `attachedFile`.
-- Корректный сброс `uploadProgress`/`uploadEta` во всех путях (success/error/abort/cancel).
+RLS: участники канала (`is_channel_member`) видят стримы; создавать/обновлять/удалять — только модераторы канала (`is_channel_mod`). Видео — те же правила через подзапрос. Зрители — сам пользователь.
 
-### 6. Фикс ошибок при создании группы (RLS)
-Сейчас при создании группы из `CreateGroupDialog`:
-- `conversations` insert (creator) — ок.
-- `conversation_members` insert для самого себя как `admin` — ок.
-- Insert остальных участников падает по RLS: политика требует `auth.uid() = user_id OR is_conversation_member(auth.uid(), conversation_id)`. На момент вставки первой записи участников `is_conversation_member` для creator уже true (он только что добавил себя), но если порядок другой — падает.
-Что делаем:
-- В `CreateGroupDialog` гарантировать порядок: 1) создать conversation, 2) вставить себя как admin, 3) затем bulk insert остальных участников.
-- Проверить и при необходимости пересоздать SECURITY DEFINER функцию для bulk-добавления, чтобы избежать гонок.
+Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE streams, stream_videos, stream_viewers`.
 
-## Вне области (объясняю почему)
+Хранение видео: bucket `chat-attachments` (уже публичный) в папке `streams/{stream_id}/`.
 
-- **«DUKE использует Telegram как базу данных вместо браузерной логики»** — невозможно. Telegram Bot API не является базой данных, нет произвольных запросов/RLS/реалтайма по таблицам. Архитектура проекта — Lovable Cloud (Supabase). Если нужна интеграция с Telegram (бот-уведомления, логин через Telegram) — это отдельный запрос.
-- **Вкладка «Терминал» с xterm.js + node-pty, реальные Ubuntu/Debian/Fedora контейнеры в браузере** — требует серверной инфраструктуры (Docker/контейнеры, WebSocket-сервер с node-pty). Lovable хостит статический клиент + edge-функции (короткоживущие, без PTY). Можно сделать только «фейковый» терминал на xterm.js без выполнения реальных команд — это игрушка, бесполезная для работы. Рекомендую отложить и обсуждать отдельно с выбором внешнего провайдера (например, e2b.dev / WebContainers).
-- **«Личные чаты — добавить возможность создания»** — уже реализовано (`NewChatDialog` + `createDirectConversation`). Пропускаем.
+## Edge function: `stream-scheduler`
 
-## Технические детали
+Cron каждую минуту (`pg_cron` + `pg_net`). Логика:
+- `scheduled` + `auto_start` + `now() >= starts_at` → `status='live'`, `actual_started_at=now()`, `current_index=0`, `current_started_at=now()`, рассылка уведомлений подписчикам канала.
+- `live` + `auto_end` и достигнут `ends_at` (если задан) или конец плейлиста без `loop_video` → `status='ended'`, `actual_ended_at=now()`, уведомление с длительностью.
+- Для `mode='video'` без custom end: продвижение `current_index` по сумме `duration_seconds`. Если последний ролик закончен и `loop_video=false` → завершить.
 
-### SQL миграция
-```sql
--- audit log
-create table public.pin_audit_log (
-  id uuid primary key default gen_random_uuid(),
-  conversation_id uuid not null,
-  message_id uuid not null,
-  actor_id uuid not null,
-  action text not null check (action in ('pin','unpin')),
-  created_at timestamptz not null default now()
-);
-alter table public.pin_audit_log enable row level security;
+Уведомления — запись в существующую систему (см. `useNotifications`) + браузерные push (Notification API на клиенте, как в чатах).
 
-create policy "Members can view pin audit"
-  on public.pin_audit_log for select to authenticated
-  using (public.is_conversation_member(auth.uid(), conversation_id));
+## Frontend
 
-create policy "Members can insert pin audit"
-  on public.pin_audit_log for insert to authenticated
-  with check (auth.uid() = actor_id and public.is_conversation_member(auth.uid(), conversation_id));
+**`src/components/channels/streams/`**
+- `CreateStreamDialog.tsx` — форма: название, описание, режим (radio Video/Бар), access_type, starts_at, опц. ends_at, флаги loop/auto-start/auto-end. Для Video — мультизагрузка до 100 файлов с прогрессом (переиспользуем XHR-логику из `ChannelView`), создание `streams` + `stream_videos`.
+- `StreamsList.tsx` — список запланированных/идущих/завершённых стримов канала, кнопка «Создать» для модов.
+- `StreamPlayer.tsx` — экран просмотра:
+  - Бейдж `| ПРЯМОЙ ЭФИР | HH:MM:SS`, после 24ч `| ПРЯМОЙ ЭФИР | N DAY: HH:MM`. Тикер на `setInterval`.
+  - Режим **video**: `<video autoPlay>` без controls (нельзя паузить/перематывать), src берётся из `stream_videos[current_index]`, синхронизация по `current_started_at` (seek = now − current_started_at). Авто-переход к следующему через realtime-обновление `current_index`. Кнопка «Завершить» скрыта.
+  - Режим **bar**: WebRTC live (переиспользуем `useWebRTC`) — микрофон, звук, демонстрация экрана (`getDisplayMedia`). Кнопка «Завершить» доступна владельцу/модам.
+- `StreamBadge.tsx` — индикатор LIVE в списке каналов.
 
--- triggers
-create or replace function public.log_pin() returns trigger
-language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.pin_audit_log(conversation_id, message_id, actor_id, action)
-  values (new.conversation_id, new.message_id, coalesce(auth.uid(), new.pinned_by), 'pin');
-  return new;
-end $$;
+**Интеграция:**
+- `ChannelView.tsx` — вкладка «Трансляции», кнопка «Создать стрим» для модов.
+- `useNotifications.ts` — обработка событий `stream_started` / `stream_ended` с текстом по ТЗ (включая длительность через `date-fns`).
+- Роуты: `/channel/:name/stream/:id` для отдельной страницы плеера.
 
-create or replace function public.log_unpin() returns trigger
-language plpgsql security definer set search_path = public as $$
-begin
-  insert into public.pin_audit_log(conversation_id, message_id, actor_id, action)
-  values (old.conversation_id, old.message_id, coalesce(auth.uid(), old.pinned_by), 'unpin');
-  return old;
-end $$;
+## Уведомления (тексты)
 
-create trigger trg_pin_insert after insert on public.pinned_messages
-  for each row execute function public.log_pin();
-create trigger trg_pin_delete after delete on public.pinned_messages
-  for each row execute function public.log_unpin();
+- Старт: `"{title} уже начался стрим"`.
+- Конец: `"{title} уже закончился стрим. Результат длительность {duration}"` (формат `Hч Mм Sс`).
 
-alter publication supabase_realtime add table public.pin_audit_log;
+Триггеры — edge function (для авто) и клиент (для ручного «Завершить» в Бар-режиме).
 
--- role management
-create policy "Admins can update member roles"
-  on public.conversation_members for update to authenticated
-  using (public.is_conversation_admin(auth.uid(), conversation_id))
-  with check (public.is_conversation_admin(auth.uid(), conversation_id));
+## Ограничения и заметки
 
-drop policy if exists "Users can leave conversations" on public.conversation_members;
-create policy "Users can leave or admins can remove"
-  on public.conversation_members for delete to authenticated
-  using (auth.uid() = user_id or public.is_conversation_admin(auth.uid(), conversation_id));
+- Видеофайлы — Supabase Storage (S3-коннектор был отклонён ранее), лимит инстанса 50MB по умолчанию. Для крупных файлов используем уже реализованный resumable-XHR; если упрётся в лимит хранилища — предупредим пользователя.
+- «Нельзя ставить на паузу» обеспечивается отсутствием `controls` и обработчиком `onPause` → `play()`.
+- Синхронизация зрителей — через серверное `current_started_at` (без WebRTC для video-режима).
 
--- prevent removing last admin
-create or replace function public.ensure_admin_exists() returns trigger
-language plpgsql as $$
-declare admin_count int;
-begin
-  select count(*) into admin_count
-    from public.conversation_members
-    where conversation_id = coalesce(new.conversation_id, old.conversation_id)
-      and role = 'admin'
-      and id <> coalesce(old.id, '00000000-0000-0000-0000-000000000000'::uuid);
-  if (tg_op = 'UPDATE' and old.role = 'admin' and new.role <> 'admin' and admin_count = 0)
-     or (tg_op = 'DELETE' and old.role = 'admin' and admin_count = 0) then
-    raise exception 'Cannot remove last admin';
-  end if;
-  return coalesce(new, old);
-end $$;
+## Файлы
 
-create trigger trg_ensure_admin
-  before update or delete on public.conversation_members
-  for each row execute function public.ensure_admin_exists();
-```
-
-### Файлы
-- Новые: `src/components/chat/PinnedListDialog.tsx`, `src/components/chat/GroupMembersDialog.tsx`, миграция SQL.
-- Правки: `usePinnedMessages.ts` (доп. поля + аудит-выборка), `ChatArea.tsx` (кнопка списка + members-диалог), `CreateGroupDialog.tsx` (порядок insert), `ChannelView.tsx` (cancel/retry), `MessageBubble.tsx` (без изменений API).
-
-После одобрения — реализую всё одной итерацией.
+Создать: миграция SQL, `supabase/functions/stream-scheduler/index.ts`, `CreateStreamDialog.tsx`, `StreamsList.tsx`, `StreamPlayer.tsx`, `StreamBadge.tsx`, `useStreams.ts`.
+Изменить: `ChannelView.tsx`, `ChannelPage.tsx`, `useNotifications.ts`, `App.tsx` (роут), `i18n/translations.ts`.
