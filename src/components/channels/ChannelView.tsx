@@ -530,6 +530,11 @@ export default function ChannelView({ channel, onRefresh }: Props) {
           <p className="text-sm text-muted-foreground">{t("no_post_permission", lang)}</p>
         </div>
       )}
+        </TabsContent>
+        <TabsContent value="streams" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden">
+          <StreamsList channelId={channel.id} channelName={channel.name} canModerate={canModerate} />
+        </TabsContent>
+      </Tabs>
 
       <InviteToChannelDialog open={showInvite} onOpenChange={setShowInvite} channelId={channel.id} onInvited={onRefresh} />
 
