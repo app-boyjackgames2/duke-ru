@@ -368,6 +368,12 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         </div>
       </div>
 
+      <Tabs defaultValue="posts" className="flex-1 flex flex-col min-h-0">
+        <TabsList className="mx-3 mt-2 self-start">
+          <TabsTrigger value="posts"><Megaphone className="w-3.5 h-3.5 mr-1" />Посты</TabsTrigger>
+          <TabsTrigger value="streams"><Radio className="w-3.5 h-3.5 mr-1" />Трансляции</TabsTrigger>
+        </TabsList>
+        <TabsContent value="posts" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
       {/* Posts */}
       <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-4">
         {loading ? (
