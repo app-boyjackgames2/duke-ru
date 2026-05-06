@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/i18n/translations";
 import dukeIcon from "@/assets/duke-icon.jpeg";
+import NotificationsInbox from "@/components/notifications/NotificationsInbox";
 
 interface Props {
   conversations: ConversationWithDetails[];
@@ -81,6 +82,7 @@ export default function ChatSidebar({ conversations, channels, activeId, activeT
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setShowNewGroup(true)}>
             <Users className="w-4 h-4" />
           </Button>
+          <NotificationsInbox />
           <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => navigate("/settings")}>
             <Settings className="w-4 h-4" />
           </Button>
