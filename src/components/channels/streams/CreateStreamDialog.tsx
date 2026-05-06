@@ -46,14 +46,20 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
   const [loopVideo, setLoopVideo] = useState(false);
   const [autoStart, setAutoStart] = useState(true);
   const [autoEnd, setAutoEnd] = useState(true);
+  const [isBroadcast, setIsBroadcast] = useState(false);
+  const [disableAds, setDisableAds] = useState(false);
+  const [ageRating, setAgeRating] = useState<string>("none");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setTitle(""); setDescription(""); setMode("video"); setAccessType("open");
     setEndsAt(""); setLoopVideo(false); setAutoStart(true); setAutoEnd(true);
+    setIsBroadcast(false); setDisableAds(false); setAgeRating("none"); setLogoFile(null);
     setFiles([]); setProgress(0); setSubmitting(false);
   };
 
@@ -75,6 +81,16 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
 
     setSubmitting(true);
 
+    let logo_url: string | null = null;
+    if (logoFile) {
+      const ext = (logoFile.name.split(".").pop() || "png").toLowerCase();
+      const path = `streams/logos/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, logoFile, { contentType: logoFile.type, upsert: false });
+      if (!upErr) logo_url = supabase.storage.from("chat-attachments").getPublicUrl(path).data.publicUrl;
+    }
+
+    const access_token = accessType === "link" ? Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14) : null;
+
     const { data: created, error } = await supabase.from("streams").insert({
       channel_id: channelId,
       created_by: user.id,
@@ -82,11 +98,16 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
       description: description.trim(),
       mode,
       access_type: accessType,
+      access_token,
       starts_at: new Date(startsAt).toISOString(),
       ends_at: endsAt ? new Date(endsAt).toISOString() : null,
       loop_video: loopVideo,
       auto_start: autoStart,
       auto_end: autoEnd,
+      is_broadcast: isBroadcast,
+      disable_ads: disableAds,
+      age_rating: ageRating === "none" ? null : ageRating,
+      logo_url,
     }).select().single();
 
     if (error || !created) {
@@ -207,6 +228,31 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Возрастной рейтинг</Label>
+              <Select value={ageRating} onValueChange={setAgeRating}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  <SelectItem value="0+">0+</SelectItem>
+                  <SelectItem value="6+">6+</SelectItem>
+                  <SelectItem value="12+">12+</SelectItem>
+                  <SelectItem value="16+">16+</SelectItem>
+                  <SelectItem value="18+">18+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Логотип (опц.)</Label>
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { setLogoFile(e.target.files?.[0] || null); e.target.value = ""; }} />
+              <Button type="button" variant="outline" className="w-full" onClick={() => logoInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" /> {logoFile ? logoFile.name.slice(0, 14) : "Выбрать"}
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             {mode === "video" && (
               <div className="flex items-center justify-between">
@@ -221,6 +267,14 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
             <div className="flex items-center justify-between">
               <Label htmlFor="autoend">Авто-завершение</Label>
               <Switch id="autoend" checked={autoEnd} onCheckedChange={setAutoEnd} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="broadcast">Режим «Вещание» (без паузы)</Label>
+              <Switch id="broadcast" checked={isBroadcast} onCheckedChange={setIsBroadcast} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="disableads">Отключить анонсы и рекламу</Label>
+              <Switch id="disableads" checked={disableAds} onCheckedChange={setDisableAds} />
             </div>
           </div>
 

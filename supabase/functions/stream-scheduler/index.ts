@@ -9,6 +9,7 @@ interface Stream {
   id: string;
   channel_id: string;
   mode: "video" | "bar";
+  title: string;
   starts_at: string;
   ends_at: string | null;
   actual_started_at: string | null;
@@ -30,7 +31,21 @@ Deno.serve(async (req) => {
 
   const now = new Date();
   const nowIso = now.toISOString();
-  let started = 0, ended = 0, advanced = 0;
+  let started = 0, ended = 0, advanced = 0, notified = 0;
+
+  // Helper: insert notifications for all channel members
+  const notifyChannel = async (channelId: string, streamId: string, type: string, payload: any) => {
+    const { data: members } = await supabase
+      .from("channel_members")
+      .select("user_id")
+      .eq("channel_id", channelId);
+    if (!members || members.length === 0) return;
+    const rows = members.map((m: any) => ({
+      user_id: m.user_id, stream_id: streamId, type, payload,
+    }));
+    const { error } = await supabase.from("stream_notifications").insert(rows);
+    if (!error) notified += rows.length;
+  };
 
   // 1. Auto-start scheduled streams
   const { data: toStart } = await supabase
@@ -47,32 +62,32 @@ Deno.serve(async (req) => {
       current_index: 0,
       current_started_at: nowIso,
     }).eq("id", s.id);
+    await notifyChannel(s.channel_id, s.id, "started", { title: s.title });
     started++;
   }
 
-  // 2. Process live streams (advance video, end if needed)
+  // 2. Process live streams
   const { data: live } = await supabase
     .from("streams")
     .select("*")
     .eq("status", "live");
 
   for (const s of (live || []) as Stream[]) {
-    // Custom end time
     if (s.auto_end && s.ends_at && new Date(s.ends_at) <= now) {
       await supabase.from("streams").update({
         status: "ended",
         actual_ended_at: nowIso,
       }).eq("id", s.id);
+      await notifyChannel(s.channel_id, s.id, "ended", { title: s.title });
       ended++;
       continue;
     }
 
     if (s.mode !== "video") continue;
 
-    // Advance video index based on cumulative duration
     const { data: vids } = await supabase
       .from("stream_videos")
-      .select("id, position, duration_seconds")
+      .select("id, position, duration_seconds, file_name")
       .eq("stream_id", s.id)
       .order("position");
 
@@ -97,6 +112,7 @@ Deno.serve(async (req) => {
             status: "ended",
             actual_ended_at: nowIso,
           }).eq("id", s.id);
+          await notifyChannel(s.channel_id, s.id, "ended", { title: s.title });
           ended++;
         }
       } else {
@@ -109,7 +125,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ started, ended, advanced }), {
+  return new Response(JSON.stringify({ started, ended, advanced, notified }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });

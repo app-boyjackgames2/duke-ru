@@ -19,6 +19,11 @@ export interface StreamRow {
   auto_end: boolean;
   current_index: number;
   current_started_at: string | null;
+  is_broadcast?: boolean;
+  disable_ads?: boolean;
+  age_rating?: string | null;
+  logo_url?: string | null;
+  access_token?: string | null;
 }
 
 export interface StreamVideoRow {

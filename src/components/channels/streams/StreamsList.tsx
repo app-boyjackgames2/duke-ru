@@ -1,7 +1,7 @@
 import { useChannelStreams, StreamRow } from "@/hooks/useStreams";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Radio, Video, Mic, Loader2, Trash2 } from "lucide-react";
+import { Plus, Radio, Video, Mic, Loader2, Trash2, Link2 } from "lucide-react";
 import { useState } from "react";
 import CreateStreamDialog from "./CreateStreamDialog";
 import { useNavigate } from "react-router-dom";
@@ -71,14 +71,29 @@ export default function StreamsList({ channelId, channelName, canModerate }: Pro
               {s.description && <p className="text-xs text-muted-foreground line-clamp-2">{s.description}</p>}
               <div className="flex items-center justify-between mt-2 text-[11px] text-muted-foreground">
                 <span>Старт: {format(new Date(s.starts_at), "d MMM HH:mm", { locale: ru })}</span>
-                {canModerate && s.status !== "live" && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
-                    className="text-destructive/70 hover:text-destructive"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {s.access_type === "link" && s.access_token && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/channel/${channelName}/stream/${s.id}?t=${s.access_token}`;
+                        navigator.clipboard.writeText(url).then(() => toast.success("Ссылка скопирована"));
+                      }}
+                      className="hover:text-primary"
+                      title="Скопировать ссылку"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {canModerate && s.status !== "live" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
+                      className="text-destructive/70 hover:text-destructive"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))
