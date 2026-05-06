@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useStream } from "@/hooks/useStreams";
+import { useStreamViewers } from "@/hooks/useStreamViewers";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Mic, MicOff, MonitorUp, MonitorOff, Volume2, VolumeX, Square, Radio } from "lucide-react";
+import { ArrowLeft, Loader2, Mic, MicOff, MonitorUp, MonitorOff, Volume2, VolumeX, Square, Radio, Lock, Share2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import StreamChat from "@/components/streams/StreamChat";
+import ViewersList from "@/components/streams/ViewersList";
+import StreamControlPanel from "@/components/streams/StreamControlPanel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function formatLiveDuration(start: Date, now: Date) {
   const diff = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
@@ -29,6 +34,8 @@ function formatFinalDuration(seconds: number) {
 
 export default function StreamPlayerPage() {
   const { streamId } = useParams<{ streamId: string }>();
+  const [searchParams] = useSearchParams();
+  const accessToken = searchParams.get("t") || "";
   const { user } = useAuth();
   const navigate = useNavigate();
   const { stream, videos, loading } = useStream(streamId || null);
@@ -36,6 +43,7 @@ export default function StreamPlayerPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const notifiedStartRef = useRef(false);
   const notifiedEndRef = useRef(false);
+  const [canModerate, setCanModerate] = useState(false);
 
   // Bar mode media
   const [micOn, setMicOn] = useState(false);
@@ -43,10 +51,27 @@ export default function StreamPlayerPage() {
   const [muted, setMuted] = useState(false);
   const localStreamsRef = useRef<MediaStream[]>([]);
 
+  const isLive = stream?.status === "live";
+  const { viewers } = useStreamViewers(streamId || null, !!isLive);
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Check moderator status
+  useEffect(() => {
+    (async () => {
+      if (!stream || !user) { setCanModerate(false); return; }
+      if (stream.created_by === user.id) { setCanModerate(true); return; }
+      const { data } = await supabase.from("channel_members")
+        .select("role")
+        .eq("channel_id", stream.channel_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setCanModerate(data?.role === "admin" || data?.role === "moderator");
+    })();
+  }, [stream, user]);
 
   // Browser notifications on transitions
   useEffect(() => {
@@ -58,7 +83,7 @@ export default function StreamPlayerPage() {
       notifiedStartRef.current = true;
       try {
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification(`${stream.title} уже начался стрим`);
+          new Notification(`${stream.title} уже началась трансляция`);
         }
       } catch {}
     }
@@ -69,32 +94,52 @@ export default function StreamPlayerPage() {
       const dur = Math.max(0, Math.floor((endedAt - startedAt) / 1000));
       try {
         if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification(`${stream.title} уже закончился стрим. Результат длительность ${formatFinalDuration(dur)}`);
+          new Notification(`${stream.title} закончился. Длительность ${formatFinalDuration(dur)}`);
         }
       } catch {}
-      // stop bar streams
       stopAllLocal();
     }
   }, [stream?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Video sync for video mode
   const currentVideo = useMemo(() => {
     if (!stream || stream.mode !== "video" || videos.length === 0) return null;
     const idx = Math.min(stream.current_index ?? 0, videos.length - 1);
     return videos[idx] || null;
   }, [stream, videos]);
 
+  // Hard sync on transitions (video / index / status)
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !stream || stream.mode !== "video" || !currentVideo) return;
     if (stream.status !== "live") return;
     const startedAt = stream.current_started_at ? new Date(stream.current_started_at).getTime() : Date.now();
-    const offset = Math.max(0, (Date.now() - startedAt) / 1000);
+    const offset = stream.is_broadcast ? 0 : Math.max(0, (Date.now() - startedAt) / 1000);
     try {
-      if (Math.abs((v.currentTime || 0) - offset) > 1.5) v.currentTime = Math.min(offset, currentVideo.duration_seconds || offset);
+      v.currentTime = Math.min(offset, currentVideo.duration_seconds || offset);
       v.play().catch(() => {});
     } catch {}
-  }, [currentVideo?.id, stream?.status, stream?.current_started_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentVideo?.id, stream?.status, stream?.current_started_at, stream?.is_broadcast]);
+
+  // Smooth correction loop (rate / seek)
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !stream || stream.mode !== "video" || !currentVideo || stream.status !== "live") return;
+    if (stream.is_broadcast) { v.playbackRate = 1; return; }
+    const id = setInterval(() => {
+      const startedAt = stream.current_started_at ? new Date(stream.current_started_at).getTime() : Date.now();
+      const target = Math.max(0, (Date.now() - startedAt) / 1000);
+      const diff = (v.currentTime || 0) - target;
+      if (Math.abs(diff) > 1.5) {
+        v.currentTime = Math.min(target, currentVideo.duration_seconds || target);
+        v.playbackRate = 1;
+      } else if (Math.abs(diff) > 0.25) {
+        v.playbackRate = diff > 0 ? 0.95 : 1.05;
+      } else {
+        v.playbackRate = 1;
+      }
+    }, 5000);
+    return () => { clearInterval(id); v.playbackRate = 1; };
+  }, [currentVideo?.id, stream?.status, stream?.current_started_at, stream?.is_broadcast]);
 
   const stopAllLocal = () => {
     localStreamsRef.current.forEach((s) => s.getTracks().forEach((t) => t.stop()));
@@ -109,13 +154,13 @@ export default function StreamPlayerPage() {
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
       localStreamsRef.current.push(s);
       setMicOn(true);
-    } catch (e: any) { toast.error("Микрофон недоступен"); }
+    } catch { toast.error("Микрофон недоступен"); }
   };
 
   const toggleScreen = async () => {
     if (screenOn) {
       localStreamsRef.current = localStreamsRef.current.filter((s) => {
-        const isScreen = s.getVideoTracks().some((t) => t.label.toLowerCase().includes("screen") || t.kind === "video");
+        const isScreen = s.getVideoTracks().length > 0;
         if (isScreen) { s.getTracks().forEach((t) => t.stop()); return false; }
         return true;
       });
@@ -141,7 +186,24 @@ export default function StreamPlayerPage() {
     stopAllLocal();
   };
 
+  const copyShareLink = () => {
+    if (!stream) return;
+    const base = `${window.location.origin}/channel/${stream.channel_id}/stream/${stream.id}`;
+    const url = stream.access_type === "link" && stream.access_token ? `${base}?t=${stream.access_token}` : base;
+    navigator.clipboard.writeText(url).then(() => toast.success("Ссылка скопирована"));
+  };
+
   useEffect(() => () => stopAllLocal(), []);
+
+  // Age rating overlay for broadcast / on transitions
+  const [ratingVisible, setRatingVisible] = useState(false);
+  useEffect(() => {
+    if (!stream?.age_rating) return;
+    if (stream.status !== "live") return;
+    setRatingVisible(true);
+    const t = setTimeout(() => setRatingVisible(false), 11000);
+    return () => clearTimeout(t);
+  }, [currentVideo?.id, stream?.status, stream?.age_rating]);
 
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
@@ -155,8 +217,17 @@ export default function StreamPlayerPage() {
     );
   }
 
-  const isLive = stream.status === "live";
-  const isOwner = user?.id === stream.created_by;
+  // Access check: link requires token match
+  if (stream.access_type === "link" && stream.access_token && accessToken !== stream.access_token && !canModerate) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 p-4 text-center">
+        <Lock className="w-10 h-10 text-muted-foreground" />
+        <p className="text-muted-foreground">Эта трансляция доступна только по ссылке</p>
+        <Button variant="outline" onClick={() => navigate(-1)}>Назад</Button>
+      </div>
+    );
+  }
+
   const liveSince = stream.actual_started_at ? new Date(stream.actual_started_at) : new Date(stream.starts_at);
 
   return (
@@ -173,16 +244,20 @@ export default function StreamPlayerPage() {
           {stream.status === "scheduled" && <span className="text-xs text-muted-foreground">Запланировано: {liveSince.toLocaleString()}</span>}
           {stream.status === "ended" && <span className="text-xs text-muted-foreground">Завершён</span>}
         </div>
-        <div className="w-9" />
+        <Button variant="ghost" size="icon" onClick={copyShareLink} title="Поделиться">
+          <Share2 className="w-4 h-4" />
+        </Button>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
-        <div className="w-full max-w-4xl">
-          <h1 className="text-xl font-semibold mb-1">{stream.title}</h1>
-          {stream.description && <p className="text-sm text-muted-foreground mb-4">{stream.description}</p>}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4 p-4 max-w-[1600px] w-full mx-auto">
+        <div className="space-y-3 min-w-0">
+          <div>
+            <h1 className="text-xl font-semibold mb-1">{stream.title}</h1>
+            {stream.description && <p className="text-sm text-muted-foreground">{stream.description}</p>}
+          </div>
 
           {stream.mode === "video" ? (
-            <div className="aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
+            <div className="aspect-video relative bg-black rounded-lg overflow-hidden flex items-center justify-center">
               {currentVideo && isLive ? (
                 <video
                   ref={videoRef}
@@ -190,11 +265,22 @@ export default function StreamPlayerPage() {
                   className="w-full h-full"
                   autoPlay
                   playsInline
-                  onPause={(e) => { (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
+                  muted={muted}
+                  onPause={(e) => { if (stream.is_broadcast) (e.currentTarget as HTMLVideoElement).play().catch(() => {}); }}
                   onContextMenu={(e) => e.preventDefault()}
                 />
               ) : (
                 <div className="text-muted-foreground text-sm">{stream.status === "scheduled" ? "Стрим скоро начнётся" : "Стрим завершён"}</div>
+              )}
+              {stream.logo_url && isLive && (
+                <img src={stream.logo_url} alt="logo" className="absolute top-3 right-3 w-12 h-12 object-contain opacity-90 pointer-events-none" />
+              )}
+              {ratingVisible && stream.age_rating && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-black/70 text-white text-7xl font-bold px-8 py-4 rounded-2xl animate-fade-in">
+                    {stream.age_rating}
+                  </div>
+                </div>
               )}
             </div>
           ) : (
@@ -220,14 +306,37 @@ export default function StreamPlayerPage() {
             </div>
           )}
 
-          {/* End button only in bar mode and only owner/mod */}
-          {stream.mode === "bar" && isLive && isOwner && (
-            <div className="flex justify-end mt-3">
-              <Button variant="destructive" onClick={handleEndStream}>
-                <Square className="w-4 h-4 mr-2" /> Завершить
-              </Button>
+          {canModerate && <StreamControlPanel stream={stream} videos={videos} />}
+
+          {stream.mode === "video" && videos.length > 0 && (
+            <div className="bg-card/30 border border-border rounded-lg p-3">
+              <h3 className="text-sm font-semibold mb-2">Плейлист ({videos.length})</h3>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {videos.map((v, i) => (
+                  <div key={v.id} className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${i === (stream.current_index ?? 0) && isLive ? "bg-primary/20 text-primary" : "text-muted-foreground"}`}>
+                    <span className="w-5 text-center">{i + 1}</span>
+                    <span className="flex-1 truncate">{v.file_name || "Видео"}</span>
+                    <span>{Math.floor((v.duration_seconds || 0) / 60)}:{String(Math.floor((v.duration_seconds || 0) % 60)).padStart(2, "0")}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+        </div>
+
+        <div className="lg:h-[calc(100vh-7rem)] min-h-[500px]">
+          <Tabs defaultValue="chat" className="h-full flex flex-col">
+            <TabsList className="grid grid-cols-2">
+              <TabsTrigger value="chat">Чат</TabsTrigger>
+              <TabsTrigger value="viewers">Зрители ({viewers.length})</TabsTrigger>
+            </TabsList>
+            <TabsContent value="chat" className="flex-1 mt-2 min-h-0">
+              <StreamChat streamId={stream.id} canModerate={canModerate} />
+            </TabsContent>
+            <TabsContent value="viewers" className="flex-1 mt-2 min-h-0">
+              <ViewersList viewers={viewers} />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
