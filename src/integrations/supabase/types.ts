@@ -450,6 +450,114 @@ export type Database = {
         }
         Relationships: []
       }
+      stream_chat_messages: {
+        Row: {
+          attachment_url: string | null
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_chat_messages_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stream_chat_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_chat_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "stream_chat_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stream_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          read_at: string | null
+          stream_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          stream_id: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read_at?: string | null
+          stream_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stream_notifications_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stream_videos: {
         Row: {
           created_at: string
@@ -495,18 +603,21 @@ export type Database = {
         Row: {
           id: string
           joined_at: string
+          last_seen_at: string
           stream_id: string
           user_id: string
         }
         Insert: {
           id?: string
           joined_at?: string
+          last_seen_at?: string
           stream_id: string
           user_id: string
         }
         Update: {
           id?: string
           joined_at?: string
+          last_seen_at?: string
           stream_id?: string
           user_id?: string
         }
@@ -522,9 +633,11 @@ export type Database = {
       }
       streams: {
         Row: {
+          access_token: string | null
           access_type: string
           actual_ended_at: string | null
           actual_started_at: string | null
+          age_rating: string | null
           auto_end: boolean
           auto_start: boolean
           channel_id: string
@@ -533,8 +646,11 @@ export type Database = {
           current_index: number
           current_started_at: string | null
           description: string | null
+          disable_ads: boolean
           ends_at: string | null
           id: string
+          is_broadcast: boolean
+          logo_url: string | null
           loop_video: boolean
           mode: string
           starts_at: string
@@ -543,9 +659,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_token?: string | null
           access_type?: string
           actual_ended_at?: string | null
           actual_started_at?: string | null
+          age_rating?: string | null
           auto_end?: boolean
           auto_start?: boolean
           channel_id: string
@@ -554,8 +672,11 @@ export type Database = {
           current_index?: number
           current_started_at?: string | null
           description?: string | null
+          disable_ads?: boolean
           ends_at?: string | null
           id?: string
+          is_broadcast?: boolean
+          logo_url?: string | null
           loop_video?: boolean
           mode: string
           starts_at: string
@@ -564,9 +685,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_token?: string | null
           access_type?: string
           actual_ended_at?: string | null
           actual_started_at?: string | null
+          age_rating?: string | null
           auto_end?: boolean
           auto_start?: boolean
           channel_id?: string
@@ -575,14 +698,35 @@ export type Database = {
           current_index?: number
           current_started_at?: string | null
           description?: string | null
+          disable_ads?: boolean
           ends_at?: string | null
           id?: string
+          is_broadcast?: boolean
+          logo_url?: string | null
           loop_video?: boolean
           mode?: string
           starts_at?: string
           status?: string
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_notification_prefs: {
+        Row: {
+          stream_alerts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          stream_alerts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          stream_alerts?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
