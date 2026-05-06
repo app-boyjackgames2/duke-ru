@@ -228,6 +228,31 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Возрастной рейтинг</Label>
+              <Select value={ageRating} onValueChange={setAgeRating}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  <SelectItem value="0+">0+</SelectItem>
+                  <SelectItem value="6+">6+</SelectItem>
+                  <SelectItem value="12+">12+</SelectItem>
+                  <SelectItem value="16+">16+</SelectItem>
+                  <SelectItem value="18+">18+</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Логотип (опц.)</Label>
+              <input ref={logoInputRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { setLogoFile(e.target.files?.[0] || null); e.target.value = ""; }} />
+              <Button type="button" variant="outline" className="w-full" onClick={() => logoInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" /> {logoFile ? logoFile.name.slice(0, 14) : "Выбрать"}
+              </Button>
+            </div>
+          </div>
+
           <div className="space-y-2">
             {mode === "video" && (
               <div className="flex items-center justify-between">
@@ -242,6 +267,14 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
             <div className="flex items-center justify-between">
               <Label htmlFor="autoend">Авто-завершение</Label>
               <Switch id="autoend" checked={autoEnd} onCheckedChange={setAutoEnd} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="broadcast">Режим «Вещание» (без паузы)</Label>
+              <Switch id="broadcast" checked={isBroadcast} onCheckedChange={setIsBroadcast} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="disableads">Отключить анонсы и рекламу</Label>
+              <Switch id="disableads" checked={disableAds} onCheckedChange={setDisableAds} />
             </div>
           </div>
 
