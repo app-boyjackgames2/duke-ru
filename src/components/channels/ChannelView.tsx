@@ -458,10 +458,10 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                   <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
                 )}
 
-                {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
+                {post.image_url && <img src={signedPostUrls[post.id] || post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
                 {(post as any).file_url && !(post as any).image_url && (
                   (() => {
-                    const url = (post as any).file_url as string;
+                    const url = signedPostUrls[post.id] || ((post as any).file_url as string);
                     const name = ((post as any).file_name || "") as string;
                     const isVideo = /\.(mp4|webm|mov|m4v|ogv)(\?|$)/i.test(url) || /\.(mp4|webm|mov|m4v|ogv)$/i.test(name);
                     if (isVideo) {
