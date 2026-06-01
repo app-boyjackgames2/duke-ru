@@ -24,10 +24,31 @@ interface Stream {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Auth: require the service role key (used by the scheduled cron) or a dedicated SCHEDULER_SECRET.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const schedulerSecret = Deno.env.get("SCHEDULER_SECRET") || "";
+  const authHeader = req.headers.get("authorization") || "";
+  const apikeyHeader = req.headers.get("apikey") || "";
+  const providedBearer = authHeader.toLowerCase().startsWith("bearer ")
+    ? authHeader.slice(7).trim()
+    : "";
+  const schedulerHeader = req.headers.get("x-scheduler-secret") || "";
+  const authorized =
+    providedBearer === serviceKey ||
+    apikeyHeader === serviceKey ||
+    (schedulerSecret.length > 0 && schedulerHeader === schedulerSecret);
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    serviceKey,
   );
+
 
   const now = new Date();
   const nowIso = now.toISOString();

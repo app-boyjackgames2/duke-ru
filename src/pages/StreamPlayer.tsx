@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useStream } from "@/hooks/useStreams";
+import { useStream, checkStreamLinkAccess } from "@/hooks/useStreams";
 import { useStreamViewers } from "@/hooks/useStreamViewers";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Mic, MicOff, MonitorUp, MonitorOff, Volume2, VolumeX, Square, Radio, Lock, Share2, Copy } from "lucide-react";
@@ -44,6 +44,9 @@ export default function StreamPlayerPage() {
   const notifiedStartRef = useRef(false);
   const notifiedEndRef = useRef(false);
   const [canModerate, setCanModerate] = useState(false);
+  const [linkAccessChecked, setLinkAccessChecked] = useState(false);
+  const [linkAccessOk, setLinkAccessOk] = useState(false);
+
 
   // Bar mode media
   const [micOn, setMicOn] = useState(false);
@@ -186,12 +189,21 @@ export default function StreamPlayerPage() {
     stopAllLocal();
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (!stream) return;
     const base = `${window.location.origin}/channel/${stream.channel_id}/stream/${stream.id}`;
-    const url = stream.access_type === "link" && stream.access_token ? `${base}?t=${stream.access_token}` : base;
+    let url = base;
+    if (stream.access_type === "link" && canModerate) {
+      // Only moderators may read the secret access_token (fetched on demand, never cached in client state).
+      const { data } = await supabase.from("streams").select("access_token").eq("id", stream.id).maybeSingle();
+      const tok = (data as { access_token?: string | null } | null)?.access_token;
+      if (tok) url = `${base}?t=${tok}`;
+    } else if (stream.access_type === "link" && accessToken) {
+      url = `${base}?t=${accessToken}`;
+    }
     navigator.clipboard.writeText(url).then(() => toast.success("Ссылка скопирована"));
   };
+
 
   useEffect(() => () => stopAllLocal(), []);
 
@@ -217,8 +229,19 @@ export default function StreamPlayerPage() {
     );
   }
 
-  // Access check: link requires token match
-  if (stream.access_type === "link" && stream.access_token && accessToken !== stream.access_token && !canModerate) {
+  // Server-side link access validation
+  useEffect(() => {
+    if (!stream) return;
+    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
+      setLinkAccessOk(ok);
+      setLinkAccessChecked(true);
+    });
+  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
+
+  // Access check: link requires server-validated token match
+  if (stream.access_type === "link" && linkAccessChecked && !linkAccessOk && !canModerate) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 p-4 text-center">
         <Lock className="w-10 h-10 text-muted-foreground" />
@@ -227,6 +250,7 @@ export default function StreamPlayerPage() {
       </div>
     );
   }
+
 
   const liveSince = stream.actual_started_at ? new Date(stream.actual_started_at) : new Date(stream.starts_at);
 
