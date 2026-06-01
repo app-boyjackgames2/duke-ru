@@ -305,10 +305,10 @@ export default function StreamPlayerPage() {
 
           {stream.mode === "video" ? (
             <div className="aspect-video relative bg-black rounded-lg overflow-hidden flex items-center justify-center">
-              {currentVideo && isLive ? (
+              {currentVideo && signedVideoUrl && isLive ? (
                 <video
                   ref={videoRef}
-                  src={currentVideo.file_url}
+                  src={signedVideoUrl}
                   className="w-full h-full"
                   autoPlay
                   playsInline
@@ -319,8 +319,8 @@ export default function StreamPlayerPage() {
               ) : (
                 <div className="text-muted-foreground text-sm">{stream.status === "scheduled" ? "Стрим скоро начнётся" : "Стрим завершён"}</div>
               )}
-              {stream.logo_url && isLive && (
-                <img src={stream.logo_url} alt="logo" className="absolute top-3 right-3 w-12 h-12 object-contain opacity-90 pointer-events-none" />
+              {signedLogoUrl && isLive && (
+                <img src={signedLogoUrl} alt="logo" className="absolute top-3 right-3 w-12 h-12 object-contain opacity-90 pointer-events-none" />
               )}
               {ratingVisible && stream.age_rating && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
