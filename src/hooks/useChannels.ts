@@ -19,6 +19,8 @@ export interface ChannelPost {
   author_id: string;
   content: string;
   image_url: string | null;
+  file_url?: string | null;
+  file_name?: string | null;
   created_at: string;
   updated_at: string;
   author?: {

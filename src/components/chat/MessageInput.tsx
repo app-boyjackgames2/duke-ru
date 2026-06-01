@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import { CHAT_ATTACHMENTS_BUCKET } from "@/lib/chat-attachments";
 
 interface Props {
   onSend: (content: string, type?: string, fileUrl?: string, fileName?: string, fileSize?: number) => void;
@@ -66,14 +67,13 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
 
         setUploading(true);
         const path = `${conversationId}/${Date.now()}.webm`;
-        const { error } = await supabase.storage.from("chat-attachments").upload(path, blob);
+        const { error } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(path, blob);
         if (error) {
           toast.error("Ошибка загрузки голосового");
           setUploading(false);
           return;
         }
-        const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
-        onSend("🎤 Голосовое сообщение", "voice", urlData.publicUrl, "voice.webm", blob.size);
+        onSend("🎤 Голосовое сообщение", "voice", path, "voice.webm", blob.size);
         setUploading(false);
       };
 
@@ -105,20 +105,19 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
     const ext = file.name.split(".").pop();
     const path = `${conversationId}/${Date.now()}.${ext}`;
 
-    const { error } = await supabase.storage.from("chat-attachments").upload(path, file);
+    const { error } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(path, file);
     if (error) {
       toast.error("Ошибка загрузки файла");
       setUploading(false);
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
     const isImage = file.type.startsWith("image/");
 
     onSend(
       isImage ? "" : file.name,
       isImage ? "image" : "file",
-      urlData.publicUrl,
+      path,
       file.name,
       file.size
     );

@@ -4,8 +4,9 @@ import { Reply, SmilePlus, Download, FileText, Trash2, Forward, Pencil, Check, X
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getSignedChatAttachmentUrl } from "@/lib/chat-attachments";
 
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
@@ -44,6 +45,19 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
   const [showEmojis, setShowEmojis] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.content || "");
+  const [signedFileUrl, setSignedFileUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    setSignedFileUrl(null);
+    if (!message.file_url) return;
+
+    getSignedChatAttachmentUrl(message.file_url).then((url) => {
+      if (mounted) setSignedFileUrl(url || message.file_url);
+    });
+
+    return () => { mounted = false; };
+  }, [message.file_url]);
 
   const groupedReactions = message.reactions?.reduce((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = { count: 0, hasOwn: false };
@@ -77,20 +91,20 @@ export default function MessageBubble({ message, isMine, showAvatar, onReply, on
         </div>
       );
     }
-    if (message.type === "image" && message.file_url) {
+    if (message.type === "image" && signedFileUrl) {
       return (
         <div>
-          <img src={message.file_url} alt={message.file_name || "Image"} className="max-w-xs rounded-lg" />
+          <img src={signedFileUrl} alt={message.file_name || "Image"} className="max-w-xs rounded-lg" />
           {message.content && <p className="mt-1 text-sm">{message.content}</p>}
         </div>
       );
     }
-    if (message.type === "voice" && message.file_url) {
-      return <audio controls src={message.file_url} className="h-8 max-w-[220px]" />;
+    if (message.type === "voice" && signedFileUrl) {
+      return <audio controls src={signedFileUrl} className="h-8 max-w-[220px]" />;
     }
-    if (message.type === "file" && message.file_url) {
+    if (message.type === "file" && signedFileUrl) {
       return (
-        <a href={message.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline">
+        <a href={signedFileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm hover:underline">
           <FileText className="w-4 h-4" />
           <span className="truncate max-w-[200px]">{message.file_name || "File"}</span>
           <Download className="w-3 h-3 flex-shrink-0" />

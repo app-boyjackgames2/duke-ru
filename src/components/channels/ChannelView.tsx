@@ -36,6 +36,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/i18n/translations";
+import { CHAT_ATTACHMENTS_BUCKET, getSignedChatAttachmentUrl } from "@/lib/chat-attachments";
 
 interface Props {
   channel: ChannelWithDetails;
@@ -67,6 +68,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadEta, setUploadEta] = useState<string>("");
   const [uploadFailed, setUploadFailed] = useState(false);
+  const [signedPostUrls, setSignedPostUrls] = useState<Record<string, string>>({});
   const xhrRef = useRef<XMLHttpRequest | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { lang } = useLanguage();
@@ -99,6 +101,25 @@ export default function ChannelView({ channel, onRefresh }: Props) {
   }, [user, channel.id]);
 
   const canPost = isCreator || isMod || myRole === "moderator" || myRole === "admin";
+
+  useEffect(() => {
+    let mounted = true;
+    const entries = posts
+      .map((post) => [post.id, post.image_url || post.file_url] as const)
+      .filter((entry): entry is readonly [string, string] => Boolean(entry[1]));
+
+    if (entries.length === 0) {
+      setSignedPostUrls({});
+      return;
+    }
+
+    Promise.all(entries.map(async ([id, value]) => [id, (await getSignedChatAttachmentUrl(value)) || value] as const))
+      .then((resolved) => {
+        if (mounted) setSignedPostUrls(Object.fromEntries(resolved));
+      });
+
+    return () => { mounted = false; };
+  }, [posts]);
 
   const loadMembers = async () => {
     setMembersLoading(true);
@@ -233,7 +254,7 @@ export default function ChannelView({ channel, onRefresh }: Props) {
 
       // Get a signed upload URL for progress tracking via XHR
       const { data: signed, error: signErr } = await supabase.storage
-        .from("chat-attachments")
+        .from(CHAT_ATTACHMENTS_BUCKET)
         .createSignedUploadUrl(path);
 
       if (signErr || !signed) {
@@ -279,11 +300,10 @@ export default function ChannelView({ channel, onRefresh }: Props) {
         return;
       }
 
-      const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
       if (attachedFile.type.startsWith("image/")) {
-        imageUrl = urlData.publicUrl;
+        imageUrl = path;
       } else {
-        fileUrl = urlData.publicUrl;
+        fileUrl = path;
         fileName = attachedFile.name;
       }
       resetUpload();
@@ -438,10 +458,10 @@ export default function ChannelView({ channel, onRefresh }: Props) {
                   <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
                 )}
 
-                {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
+                {post.image_url && <img src={signedPostUrls[post.id] || post.image_url} alt="" className="mt-3 rounded-lg max-w-md" />}
                 {(post as any).file_url && !(post as any).image_url && (
                   (() => {
-                    const url = (post as any).file_url as string;
+                    const url = signedPostUrls[post.id] || ((post as any).file_url as string);
                     const name = ((post as any).file_name || "") as string;
                     const isVideo = /\.(mp4|webm|mov|m4v|ogv)(\?|$)/i.test(url) || /\.(mp4|webm|mov|m4v|ogv)$/i.test(name);
                     if (isVideo) {

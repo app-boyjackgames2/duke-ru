@@ -11,6 +11,7 @@ import StreamChat from "@/components/streams/StreamChat";
 import ViewersList from "@/components/streams/ViewersList";
 import StreamControlPanel from "@/components/streams/StreamControlPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSignedChatAttachmentUrl } from "@/lib/chat-attachments";
 
 function formatLiveDuration(start: Date, now: Date) {
   const diff = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
@@ -46,6 +47,8 @@ export default function StreamPlayerPage() {
   const [canModerate, setCanModerate] = useState(false);
   const [linkAccessChecked, setLinkAccessChecked] = useState(false);
   const [linkAccessOk, setLinkAccessOk] = useState(false);
+  const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
+  const [signedLogoUrl, setSignedLogoUrl] = useState<string | null>(null);
 
 
   // Bar mode media
@@ -109,6 +112,26 @@ export default function StreamPlayerPage() {
     const idx = Math.min(stream.current_index ?? 0, videos.length - 1);
     return videos[idx] || null;
   }, [stream, videos]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSignedVideoUrl(null);
+    if (!currentVideo?.file_url) return;
+    getSignedChatAttachmentUrl(currentVideo.file_url).then((url) => {
+      if (mounted) setSignedVideoUrl(url || (currentVideo.file_url.startsWith("http") ? currentVideo.file_url : null));
+    });
+    return () => { mounted = false; };
+  }, [currentVideo?.file_url]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSignedLogoUrl(null);
+    if (!stream?.logo_url) return;
+    getSignedChatAttachmentUrl(stream.logo_url).then((url) => {
+      if (mounted) setSignedLogoUrl(url || (stream.logo_url?.startsWith("http") ? stream.logo_url : null));
+    });
+    return () => { mounted = false; };
+  }, [stream?.logo_url]);
 
   // Hard sync on transitions (video / index / status)
   useEffect(() => {
@@ -217,6 +240,17 @@ export default function StreamPlayerPage() {
     return () => clearTimeout(t);
   }, [currentVideo?.id, stream?.status, stream?.age_rating]);
 
+  // Server-side link access validation
+  useEffect(() => {
+    if (!stream) return;
+    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
+      setLinkAccessOk(ok);
+      setLinkAccessChecked(true);
+    });
+  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
+
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -228,17 +262,6 @@ export default function StreamPlayerPage() {
       </div>
     );
   }
-
-  // Server-side link access validation
-  useEffect(() => {
-    if (!stream) return;
-    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
-    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
-    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
-      setLinkAccessOk(ok);
-      setLinkAccessChecked(true);
-    });
-  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
 
   // Access check: link requires server-validated token match
   if (stream.access_type === "link" && linkAccessChecked && !linkAccessOk && !canModerate) {
@@ -282,10 +305,10 @@ export default function StreamPlayerPage() {
 
           {stream.mode === "video" ? (
             <div className="aspect-video relative bg-black rounded-lg overflow-hidden flex items-center justify-center">
-              {currentVideo && isLive ? (
+              {currentVideo && signedVideoUrl && isLive ? (
                 <video
                   ref={videoRef}
-                  src={currentVideo.file_url}
+                  src={signedVideoUrl}
                   className="w-full h-full"
                   autoPlay
                   playsInline
@@ -296,8 +319,8 @@ export default function StreamPlayerPage() {
               ) : (
                 <div className="text-muted-foreground text-sm">{stream.status === "scheduled" ? "Стрим скоро начнётся" : "Стрим завершён"}</div>
               )}
-              {stream.logo_url && isLive && (
-                <img src={stream.logo_url} alt="logo" className="absolute top-3 right-3 w-12 h-12 object-contain opacity-90 pointer-events-none" />
+              {signedLogoUrl && isLive && (
+                <img src={signedLogoUrl} alt="logo" className="absolute top-3 right-3 w-12 h-12 object-contain opacity-90 pointer-events-none" />
               )}
               {ratingVisible && stream.age_rating && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
