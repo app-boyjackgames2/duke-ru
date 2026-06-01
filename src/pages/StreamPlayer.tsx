@@ -240,6 +240,17 @@ export default function StreamPlayerPage() {
     return () => clearTimeout(t);
   }, [currentVideo?.id, stream?.status, stream?.age_rating]);
 
+  // Server-side link access validation
+  useEffect(() => {
+    if (!stream) return;
+    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
+      setLinkAccessOk(ok);
+      setLinkAccessChecked(true);
+    });
+  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
+
   if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
   }
@@ -251,17 +262,6 @@ export default function StreamPlayerPage() {
       </div>
     );
   }
-
-  // Server-side link access validation
-  useEffect(() => {
-    if (!stream) return;
-    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
-    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
-    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
-      setLinkAccessOk(ok);
-      setLinkAccessChecked(true);
-    });
-  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
 
   // Access check: link requires server-validated token match
   if (stream.access_type === "link" && linkAccessChecked && !linkAccessOk && !canModerate) {
