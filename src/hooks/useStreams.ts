@@ -66,6 +66,10 @@ export function useChannelStreams(channelId: string | null) {
   return { streams, loading, reload: load };
 }
 
+// Explicit column list — never select `access_token` to keep it server-side only.
+const STREAM_COLUMNS =
+  "id, channel_id, created_by, title, description, mode, access_type, starts_at, ends_at, actual_started_at, actual_ended_at, status, loop_video, auto_start, auto_end, current_index, current_started_at, is_broadcast, disable_ads, age_rating, logo_url";
+
 export function useStream(streamId: string | null) {
   const [stream, setStream] = useState<StreamRow | null>(null);
   const [videos, setVideos] = useState<StreamVideoRow[]>([]);
@@ -75,7 +79,7 @@ export function useStream(streamId: string | null) {
     if (!streamId) { setLoading(false); return; }
     let mounted = true;
     const load = async () => {
-      const { data: s } = await supabase.from("streams").select("*").eq("id", streamId).maybeSingle();
+      const { data: s } = await supabase.from("streams").select(STREAM_COLUMNS).eq("id", streamId).maybeSingle();
       const { data: v } = await supabase.from("stream_videos").select("*").eq("stream_id", streamId).order("position");
       if (!mounted) return;
       setStream((s as StreamRow) || null);
@@ -93,3 +97,16 @@ export function useStream(streamId: string | null) {
 
   return { stream, videos, loading };
 }
+
+/** Server-side validation of link-protected stream access. Returns true if the token matches in the DB. */
+export async function checkStreamLinkAccess(streamId: string, token: string): Promise<boolean> {
+  if (!token) return false;
+  const { data } = await supabase
+    .from("streams")
+    .select("id")
+    .eq("id", streamId)
+    .eq("access_token", token)
+    .maybeSingle();
+  return !!data;
+}
+
