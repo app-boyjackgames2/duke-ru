@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useStream } from "@/hooks/useStreams";
+import { useStream, checkStreamLinkAccess } from "@/hooks/useStreams";
 import { useStreamViewers } from "@/hooks/useStreamViewers";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Mic, MicOff, MonitorUp, MonitorOff, Volume2, VolumeX, Square, Radio, Lock, Share2, Copy } from "lucide-react";
