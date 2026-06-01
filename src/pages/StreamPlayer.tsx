@@ -229,8 +229,19 @@ export default function StreamPlayerPage() {
     );
   }
 
-  // Access check: link requires token match
-  if (stream.access_type === "link" && stream.access_token && accessToken !== stream.access_token && !canModerate) {
+  // Server-side link access validation
+  useEffect(() => {
+    if (!stream) return;
+    if (stream.access_type !== "link") { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    if (canModerate) { setLinkAccessOk(true); setLinkAccessChecked(true); return; }
+    checkStreamLinkAccess(stream.id, accessToken).then((ok) => {
+      setLinkAccessOk(ok);
+      setLinkAccessChecked(true);
+    });
+  }, [stream?.id, stream?.access_type, accessToken, canModerate]);
+
+  // Access check: link requires server-validated token match
+  if (stream.access_type === "link" && linkAccessChecked && !linkAccessOk && !canModerate) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 p-4 text-center">
         <Lock className="w-10 h-10 text-muted-foreground" />
@@ -239,6 +250,7 @@ export default function StreamPlayerPage() {
       </div>
     );
   }
+
 
   const liveSince = stream.actual_started_at ? new Date(stream.actual_started_at) : new Date(stream.starts_at);
 
