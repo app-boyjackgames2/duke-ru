@@ -10,6 +10,7 @@ import { ru, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { useLanguage } from "@/hooks/useLanguage";
 import { t } from "@/i18n/translations";
+import { getSignedChatAttachmentUrl } from "@/lib/chat-attachments";
 
 interface ChannelData {
   id: string;
@@ -42,6 +43,7 @@ export default function ChannelPage() {
   const [isMember, setIsMember] = useState(false);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [signedPostUrls, setSignedPostUrls] = useState<Record<string, string>>({});
 
   const dateFnsLocale = lang === "ru" ? ru : enUS;
 
@@ -83,6 +85,25 @@ export default function ChannelPage() {
       setLoading(false);
     })();
   }, [channelName, user]);
+
+  useEffect(() => {
+    let mounted = true;
+    const entries = posts
+      .map((post) => [post.id, post.image_url || post.file_url] as const)
+      .filter((entry): entry is readonly [string, string] => Boolean(entry[1]));
+
+    if (entries.length === 0) {
+      setSignedPostUrls({});
+      return;
+    }
+
+    Promise.all(entries.map(async ([id, value]) => [id, (await getSignedChatAttachmentUrl(value)) || value] as const))
+      .then((resolved) => {
+        if (mounted) setSignedPostUrls(Object.fromEntries(resolved));
+      });
+
+    return () => { mounted = false; };
+  }, [posts]);
 
   const handleSubscribe = async () => {
     if (!user) { navigate("/login"); return; }
@@ -181,9 +202,9 @@ export default function ChannelPage() {
                 {format(new Date(post.created_at), "d MMM yyyy, HH:mm", { locale: dateFnsLocale })}
               </p>
               <p className="text-sm text-foreground whitespace-pre-wrap">{post.content}</p>
-              {post.image_url && <img src={post.image_url} alt="" className="mt-3 rounded-lg max-w-full" />}
+              {post.image_url && <img src={signedPostUrls[post.id] || post.image_url} alt="" className="mt-3 rounded-lg max-w-full" />}
               {post.file_url && !post.image_url && (
-                <a href={post.file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                <a href={signedPostUrls[post.id] || post.file_url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-sm text-primary hover:underline">
                   📎 {post.file_name || t("file", lang)}
                 </a>
               )}
