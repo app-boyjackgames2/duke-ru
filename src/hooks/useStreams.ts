@@ -23,7 +23,7 @@ export interface StreamRow {
   disable_ads?: boolean;
   age_rating?: string | null;
   logo_url?: string | null;
-  access_token?: string | null;
+  // access_token intentionally omitted from client type — validated server-side via checkStreamLinkAccess.
 }
 
 export interface StreamVideoRow {
