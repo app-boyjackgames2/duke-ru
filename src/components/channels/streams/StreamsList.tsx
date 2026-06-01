@@ -72,11 +72,13 @@ export default function StreamsList({ channelId, channelName, canModerate }: Pro
               <div className="flex items-center justify-between mt-2 text-[11px] text-muted-foreground">
                 <span>Старт: {format(new Date(s.starts_at), "d MMM HH:mm", { locale: ru })}</span>
                 <div className="flex items-center gap-2">
-                  {s.access_type === "link" && s.access_token && (
+                  {s.access_type === "link" && canModerate && (
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        const url = `${window.location.origin}/channel/${channelName}/stream/${s.id}?t=${s.access_token}`;
+                        const { data } = await supabase.from("streams").select("access_token").eq("id", s.id).maybeSingle();
+                        const tok = (data as { access_token?: string | null } | null)?.access_token;
+                        const url = `${window.location.origin}/channel/${channelName}/stream/${s.id}${tok ? `?t=${tok}` : ""}`;
                         navigator.clipboard.writeText(url).then(() => toast.success("Ссылка скопирована"));
                       }}
                       className="hover:text-primary"
@@ -85,6 +87,7 @@ export default function StreamsList({ channelId, channelName, canModerate }: Pro
                       <Link2 className="w-3.5 h-3.5" />
                     </button>
                   )}
+
                   {canModerate && s.status !== "live" && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
