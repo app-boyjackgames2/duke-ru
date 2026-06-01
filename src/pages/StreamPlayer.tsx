@@ -44,6 +44,9 @@ export default function StreamPlayerPage() {
   const notifiedStartRef = useRef(false);
   const notifiedEndRef = useRef(false);
   const [canModerate, setCanModerate] = useState(false);
+  const [linkAccessChecked, setLinkAccessChecked] = useState(false);
+  const [linkAccessOk, setLinkAccessOk] = useState(false);
+
 
   // Bar mode media
   const [micOn, setMicOn] = useState(false);
