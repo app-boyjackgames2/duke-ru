@@ -11,6 +11,7 @@ import StreamChat from "@/components/streams/StreamChat";
 import ViewersList from "@/components/streams/ViewersList";
 import StreamControlPanel from "@/components/streams/StreamControlPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getSignedChatAttachmentUrl } from "@/lib/chat-attachments";
 
 function formatLiveDuration(start: Date, now: Date) {
   const diff = Math.max(0, Math.floor((now.getTime() - start.getTime()) / 1000));
@@ -46,6 +47,8 @@ export default function StreamPlayerPage() {
   const [canModerate, setCanModerate] = useState(false);
   const [linkAccessChecked, setLinkAccessChecked] = useState(false);
   const [linkAccessOk, setLinkAccessOk] = useState(false);
+  const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
+  const [signedLogoUrl, setSignedLogoUrl] = useState<string | null>(null);
 
 
   // Bar mode media
@@ -109,6 +112,26 @@ export default function StreamPlayerPage() {
     const idx = Math.min(stream.current_index ?? 0, videos.length - 1);
     return videos[idx] || null;
   }, [stream, videos]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSignedVideoUrl(null);
+    if (!currentVideo?.file_url) return;
+    getSignedChatAttachmentUrl(currentVideo.file_url).then((url) => {
+      if (mounted) setSignedVideoUrl(url || (currentVideo.file_url.startsWith("http") ? currentVideo.file_url : null));
+    });
+    return () => { mounted = false; };
+  }, [currentVideo?.file_url]);
+
+  useEffect(() => {
+    let mounted = true;
+    setSignedLogoUrl(null);
+    if (!stream?.logo_url) return;
+    getSignedChatAttachmentUrl(stream.logo_url).then((url) => {
+      if (mounted) setSignedLogoUrl(url || (stream.logo_url?.startsWith("http") ? stream.logo_url : null));
+    });
+    return () => { mounted = false; };
+  }, [stream?.logo_url]);
 
   // Hard sync on transitions (video / index / status)
   useEffect(() => {
