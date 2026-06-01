@@ -12,6 +12,7 @@ import { Loader2, Video, Mic, X, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { CHAT_ATTACHMENTS_BUCKET } from "@/lib/chat-attachments";
 
 interface Props {
   open: boolean;
@@ -84,9 +85,9 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
     let logo_url: string | null = null;
     if (logoFile) {
       const ext = (logoFile.name.split(".").pop() || "png").toLowerCase();
-      const path = `streams/logos/${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("chat-attachments").upload(path, logoFile, { contentType: logoFile.type, upsert: false });
-      if (!upErr) logo_url = supabase.storage.from("chat-attachments").getPublicUrl(path).data.publicUrl;
+      const path = `streams/logos/${channelId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(path, logoFile, { contentType: logoFile.type, upsert: false });
+      if (!upErr) logo_url = path;
     }
 
     const access_token = accessType === "link" ? Math.random().toString(36).slice(2, 14) + Math.random().toString(36).slice(2, 14) : null;
@@ -123,7 +124,7 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
       for (const f of files) {
         const ext = (f.name.split(".").pop() || "mp4").toLowerCase();
         const path = `streams/${created.id}/${Date.now()}-${i}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("chat-attachments")
+        const { error: upErr } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET)
           .upload(path, f, { contentType: f.type, upsert: false });
         if (upErr) {
           toast.error(`Не удалось загрузить ${f.name}: ${upErr.message}`);
@@ -131,12 +132,11 @@ export default function CreateStreamDialog({ open, onOpenChange, channelId, onCr
           setSubmitting(false);
           return;
         }
-        const { data: urlData } = supabase.storage.from("chat-attachments").getPublicUrl(path);
         const duration = await probeDuration(f);
         inserts.push({
           stream_id: created.id,
           position: i,
-          file_url: urlData.publicUrl,
+          file_url: path,
           file_name: f.name,
           file_size: f.size,
           duration_seconds: duration,
