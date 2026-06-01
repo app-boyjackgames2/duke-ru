@@ -186,12 +186,21 @@ export default function StreamPlayerPage() {
     stopAllLocal();
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     if (!stream) return;
     const base = `${window.location.origin}/channel/${stream.channel_id}/stream/${stream.id}`;
-    const url = stream.access_type === "link" && stream.access_token ? `${base}?t=${stream.access_token}` : base;
+    let url = base;
+    if (stream.access_type === "link" && canModerate) {
+      // Only moderators may read the secret access_token (fetched on demand, never cached in client state).
+      const { data } = await supabase.from("streams").select("access_token").eq("id", stream.id).maybeSingle();
+      const tok = (data as { access_token?: string | null } | null)?.access_token;
+      if (tok) url = `${base}?t=${tok}`;
+    } else if (stream.access_type === "link" && accessToken) {
+      url = `${base}?t=${accessToken}`;
+    }
     navigator.clipboard.writeText(url).then(() => toast.success("Ссылка скопирована"));
   };
+
 
   useEffect(() => () => stopAllLocal(), []);
 
