@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Send, Paperclip, X, Smile, Mic, Square } from "lucide-react";
+import { Send, Paperclip, X, Smile, Mic, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageWithSender } from "@/hooks/useMessages";
@@ -9,6 +9,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { CHAT_ATTACHMENTS_BUCKET } from "@/lib/chat-attachments";
+import { uploadAttachment } from "@/lib/resilient-upload";
+import { Progress } from "@/components/ui/progress";
 
 interface Props {
   onSend: (content: string, type?: string, fileUrl?: string, fileName?: string, fileSize?: number) => void;
@@ -23,9 +25,13 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
   const [uploading, setUploading] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [failedFile, setFailedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const uploadPathRef = useRef<string | null>(null);
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -67,8 +73,9 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
 
         setUploading(true);
         const path = `${conversationId}/${Date.now()}.webm`;
-        const { error } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(path, blob);
-        if (error) {
+        try {
+          await uploadAttachment({ path, file: blob, contentType: blob.type, onXhr: (xhr) => { xhrRef.current = xhr; }, onProgress: ({ percent }) => setUploadProgress(percent) });
+        } catch {
           toast.error("Ошибка загрузки голосового");
           setUploading(false);
           return;
@@ -92,22 +99,27 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
     setRecording(false);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file: File) => {
     if (!file) return;
 
     if (file.size > 50 * 1024 * 1024) {
       toast.error("Файл слишком большой (макс. 50 МБ)");
-      return;
+      setUploading(false); return;
     }
 
     setUploading(true);
     const ext = file.name.split(".").pop();
-    const path = `${conversationId}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage.from(CHAT_ATTACHMENTS_BUCKET).upload(path, file);
-    if (error) {
-      toast.error("Ошибка загрузки файла");
+    const path = uploadPathRef.current || `${conversationId}/${crypto.randomUUID()}.${ext}`;
+    uploadPathRef.current = path;
+    try {
+      await uploadAttachment({
+        path, file, contentType: file.type,
+        onXhr: (xhr) => { xhrRef.current = xhr; },
+        onProgress: ({ percent }) => setUploadProgress(percent),
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") toast.info("Загрузка отменена");
+      else { toast.error("Ошибка загрузки файла. Можно повторить."); setFailedFile(file); }
       setUploading(false);
       return;
     }
@@ -122,6 +134,24 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
       file.size
     );
     setUploading(false);
+    setUploadProgress(0);
+    setFailedFile(null);
+    uploadPathRef.current = null;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadFile(file);
+  };
+
+  const cancelUpload = () => {
+    xhrRef.current?.abort();
+    xhrRef.current = null;
+    uploadPathRef.current = null;
+    setFailedFile(null);
+    setUploading(false);
+    setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -136,6 +166,16 @@ export default function MessageInput({ onSend, replyTo, onCancelReply, conversat
           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={onCancelReply}>
             <X className="w-3 h-3" />
           </Button>
+        </div>
+      )}
+      {(uploading || failedFile) && (
+        <div className="px-3 pt-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="min-w-0 flex-1 truncate">{failedFile?.name || "Загрузка вложения"}</span>
+            {failedFile && <Button size="sm" variant="ghost" className="h-7" onClick={() => void uploadFile(failedFile)}><RefreshCw className="mr-1 h-3.5 w-3.5" />Повторить</Button>}
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelUpload}><X className="h-4 w-4" /></Button>
+          </div>
+          {uploading && <Progress value={uploadProgress} className="mt-2 h-1.5" />}
         </div>
       )}
 
