@@ -2,9 +2,11 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useConnection } from "@/contexts/ConnectionContext";
 
 export function useNotifications() {
   const { user } = useAuth();
+  const { reportRealtimeState } = useConnection();
   const permissionRef = useRef<NotificationPermission>("default");
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function useNotifications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => reportRealtimeState(status === "SUBSCRIBED"));
 
     // Listen for new channel posts
     const postChannel = supabase
@@ -97,7 +99,9 @@ export function useNotifications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") reportRealtimeState(true);
+      });
 
     // Listen for incoming calls via call_history inserts
     const callChannel = supabase
@@ -140,12 +144,14 @@ export function useNotifications() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") reportRealtimeState(true);
+      });
 
     return () => {
       supabase.removeChannel(msgChannel);
       supabase.removeChannel(postChannel);
       supabase.removeChannel(callChannel);
     };
-  }, [user]);
+  }, [user, reportRealtimeState]);
 }

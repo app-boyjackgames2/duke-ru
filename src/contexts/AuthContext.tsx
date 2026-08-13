@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { withTimeout } from "@/lib/network";
 
 interface AuthContextType {
   session: Session | null;
@@ -23,17 +24,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted) return;
       setSession(session);
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const loadSession = async () => {
+      try {
+        const { data } = await withTimeout(supabase.auth.getSession(), 10000);
+        if (mounted) setSession(data.session);
+      } catch {
+        if (mounted) setSession(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    loadSession();
+    const handleOnline = () => loadSession();
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("online", handleOnline);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

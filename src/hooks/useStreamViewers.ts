@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -12,6 +12,8 @@ export interface ViewerRow {
 export function useStreamViewers(streamId: string | null, isLive: boolean) {
   const { user } = useAuth();
   const [viewers, setViewers] = useState<ViewerRow[]>([]);
+  const beatRunning = useRef(false);
+  const loadRunning = useRef(false);
 
   // Heartbeat: insert/update presence every 20s while live
   useEffect(() => {
@@ -19,7 +21,8 @@ export function useStreamViewers(streamId: string | null, isLive: boolean) {
     let cancelled = false;
 
     const beat = async () => {
-      if (cancelled) return;
+      if (cancelled || document.hidden || !navigator.onLine || beatRunning.current) return;
+      beatRunning.current = true;
       const nowIso = new Date().toISOString();
       // Try update first
       const { data: existing } = await supabase
@@ -28,11 +31,10 @@ export function useStreamViewers(streamId: string | null, isLive: boolean) {
         .eq("stream_id", streamId)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (existing?.id) {
-        await supabase.from("stream_viewers").update({ last_seen_at: nowIso }).eq("id", existing.id);
-      } else {
-        await supabase.from("stream_viewers").insert({ stream_id: streamId, user_id: user.id, last_seen_at: nowIso });
-      }
+      try {
+        if (existing?.id) await supabase.from("stream_viewers").update({ last_seen_at: nowIso }).eq("id", existing.id);
+        else await supabase.from("stream_viewers").insert({ stream_id: streamId, user_id: user.id, last_seen_at: nowIso });
+      } finally { beatRunning.current = false; }
     };
 
     beat();
@@ -45,6 +47,8 @@ export function useStreamViewers(streamId: string | null, isLive: boolean) {
     if (!streamId) { setViewers([]); return; }
 
     const load = async () => {
+      if (document.hidden || !navigator.onLine || loadRunning.current) return;
+      loadRunning.current = true;
       const cutoff = new Date(Date.now() - 60 * 1000).toISOString();
       const { data } = await supabase
         .from("stream_viewers")
@@ -61,6 +65,7 @@ export function useStreamViewers(streamId: string | null, isLive: boolean) {
       }
       const map = new Map(profiles.map((p) => [p.user_id, p]));
       setViewers((data || []).map((r) => ({ ...r, username: map.get(r.user_id)?.username, avatar_url: map.get(r.user_id)?.avatar_url ?? null })));
+      loadRunning.current = false;
     };
 
     load();

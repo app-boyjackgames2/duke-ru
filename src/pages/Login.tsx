@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import dukeIcon from "@/assets/duke-icon.jpeg";
+import { getAuthErrorMessage, withTimeout } from "@/lib/network";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -20,13 +21,15 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 15000);
+      if (error) throw error;
       navigate("/");
+    } catch (error) {
+      toast.error(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

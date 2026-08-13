@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ConnectionProvider } from "@/contexts/ConnectionContext";
+import ConnectionBanner from "@/components/ConnectionBanner";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -21,8 +23,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+        <ConnectionProvider>
+          <ConnectionBanner />
+          <AuthProvider>
+            <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/welcome" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -31,8 +35,9 @@ const App = () => (
             <Route path="/channel/:channelName" element={<ChannelPage />} />
             <Route path="/channel/:channelName/stream/:streamId" element={<StreamPlayerPage />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
+            </Routes>
+          </AuthProvider>
+        </ConnectionProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

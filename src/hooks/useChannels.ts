@@ -90,16 +90,10 @@ export function useChannelPosts(channelId: string | null) {
 
     if (!data) { setPosts([]); setLoading(false); return; }
 
-    const enriched = await Promise.all(
-      data.map(async (post) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("user_id", post.author_id)
-          .single();
-        return { ...post, author: profile || undefined } as ChannelPost;
-      })
-    );
+    const authorIds = Array.from(new Set(data.map((post) => post.author_id)));
+    const { data: profiles } = await supabase.from("profiles").select("user_id, username, avatar_url").in("user_id", authorIds);
+    const profileMap = new Map((profiles || []).map((profile) => [profile.user_id, profile]));
+    const enriched = data.map((post) => ({ ...post, author: profileMap.get(post.author_id) }) as ChannelPost);
 
     setPosts(enriched);
     setLoading(false);
