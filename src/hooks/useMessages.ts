@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -30,62 +30,53 @@ export function useMessages(conversationId: string | null) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<MessageWithSender[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadingRef = useRef(false);
+  const queuedRef = useRef(false);
 
   const fetchMessages = useCallback(async () => {
     if (!conversationId) { setMessages([]); setLoading(false); return; }
 
+    if (loadingRef.current) { queuedRef.current = true; return; }
+    loadingRef.current = true;
     const { data } = await supabase
       .from("messages")
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
 
-    if (!data) { setMessages([]); setLoading(false); return; }
+    if (!data) { setMessages([]); setLoading(false); loadingRef.current = false; return; }
 
-    const enriched = await Promise.all(
-      data.map(async (msg) => {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("username, avatar_url")
-          .eq("user_id", msg.sender_id)
-          .single();
+    const senderIds = Array.from(new Set(data.map((msg) => msg.sender_id)));
+    const replyIds = Array.from(new Set(data.map((msg) => msg.reply_to).filter((id): id is string => Boolean(id))));
+    const messageIds = data.map((msg) => msg.id);
+    const [{ data: profiles }, { data: replies }, { data: reactions }] = await Promise.all([
+      supabase.from("profiles").select("user_id, username, avatar_url").in("user_id", senderIds),
+      replyIds.length ? supabase.from("messages").select("id, content, sender_id").in("id", replyIds) : Promise.resolve({ data: [] }),
+      supabase.from("message_reactions").select("message_id, emoji, user_id, id").in("message_id", messageIds),
+    ]);
+    const replySenderIds = Array.from(new Set((replies || []).map((reply) => reply.sender_id)));
+    const { data: replyProfiles } = replySenderIds.length
+      ? await supabase.from("profiles").select("user_id, username").in("user_id", replySenderIds)
+      : { data: [] };
+    const profileMap = new Map((profiles || []).map((profile) => [profile.user_id, profile]));
+    const replyMap = new Map((replies || []).map((reply) => [reply.id, reply]));
+    const replyProfileMap = new Map((replyProfiles || []).map((profile) => [profile.user_id, profile.username]));
 
-        let replied_message: MessageWithSender["replied_message"];
-        if (msg.reply_to) {
-          const { data: replyMsg } = await supabase
-            .from("messages")
-            .select("content, sender_id")
-            .eq("id", msg.reply_to)
-            .single();
-          if (replyMsg) {
-            const { data: replySender } = await supabase
-              .from("profiles")
-              .select("username")
-              .eq("user_id", replyMsg.sender_id)
-              .single();
-            replied_message = {
-              content: replyMsg.content,
-              sender_username: replySender?.username || "Unknown",
-            };
-          }
-        }
-
-        const { data: reactions } = await supabase
-          .from("message_reactions")
-          .select("emoji, user_id, id")
-          .eq("message_id", msg.id);
-
-        return {
-          ...msg,
-          sender: profile ? { username: profile.username, avatar_url: profile.avatar_url } : undefined,
-          replied_message,
-          reactions: reactions || [],
-        } as MessageWithSender;
-      })
-    );
+    const enriched = data.map((msg) => {
+      const profile = profileMap.get(msg.sender_id);
+      const reply = msg.reply_to ? replyMap.get(msg.reply_to) : undefined;
+      return {
+        ...msg,
+        sender: profile ? { username: profile.username, avatar_url: profile.avatar_url } : undefined,
+        replied_message: reply ? { content: reply.content, sender_username: replyProfileMap.get(reply.sender_id) || "Unknown" } : undefined,
+        reactions: (reactions || []).filter((reaction) => reaction.message_id === msg.id),
+      } as MessageWithSender;
+    });
 
     setMessages(enriched);
     setLoading(false);
+    loadingRef.current = false;
+    if (queuedRef.current) { queuedRef.current = false; void fetchMessages(); }
   }, [conversationId]);
 
   useEffect(() => {
@@ -93,21 +84,29 @@ export function useMessages(conversationId: string | null) {
 
     if (!conversationId) return;
 
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(fetchMessages, 250);
+    };
     const channel = supabase
       .channel(`messages-${conversationId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        () => fetchMessages()
+        scheduleRefresh
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "message_reactions" },
-        () => fetchMessages()
+        scheduleRefresh
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    const fallback = window.setInterval(() => {
+      if (!document.hidden && navigator.onLine) void fetchMessages();
+    }, 45000);
+    return () => { if (refreshTimer) clearTimeout(refreshTimer); clearInterval(fallback); supabase.removeChannel(channel); };
   }, [conversationId, fetchMessages]);
 
   const sendMessage = async (content: string, type = "text", replyTo?: string, fileUrl?: string, fileName?: string, fileSize?: number) => {

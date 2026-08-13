@@ -7,7 +7,7 @@ import MessageBubble from "./MessageBubble";
 import ForwardMessageDialog from "./ForwardMessageDialog";
 import CallOverlay from "./CallOverlay";
 import CallHistoryPanel from "./CallHistoryPanel";
-import { ConversationWithDetails, useConversations } from "@/hooks/useConversations";
+import { ConversationWithDetails } from "@/hooks/useConversations";
 import { Phone, Video, MoreVertical, Search, X, History, Pin, ChevronUp, ChevronDown, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,12 +27,12 @@ interface Props {
   conversation: ConversationWithDetails | null;
   onCallStateChange?: (conversationId: string | null) => void;
   onSelectConversation?: (conversationId: string) => void;
+  conversations: ConversationWithDetails[];
 }
 
-export default function ChatArea({ conversation, onCallStateChange, onSelectConversation }: Props) {
+export default function ChatArea({ conversation, conversations, onCallStateChange, onSelectConversation }: Props) {
   const { user } = useAuth();
   const { messages, loading, sendMessage, deleteMessage, toggleReaction, markAsRead, editMessage } = useMessages(conversation?.id || null);
-  const { conversations } = useConversations();
   const { typingUsers, setTyping } = useTypingIndicator(conversation?.id || null);
   const { lang } = useLanguage();
   const webrtc = useWebRTC(conversation?.id || null);
