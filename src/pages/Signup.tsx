@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import dukeIcon from "@/assets/duke-icon.jpeg";
+import { getAuthErrorMessage, withTimeout } from "@/lib/network";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -21,21 +22,23 @@ export default function Signup() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      const { error } = await withTimeout(supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username },
+          emailRedirectTo: window.location.origin,
+        },
+      }), 15000);
+      if (error) throw error;
       toast.success("Аккаунт создан! Проверьте email для подтверждения.");
       navigate("/login");
+    } catch (error) {
+      toast.error(getAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
