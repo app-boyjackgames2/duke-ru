@@ -10,18 +10,20 @@ import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import dukeIcon from "@/assets/duke-icon.jpeg";
-import { getAuthErrorMessage, withTimeout } from "@/lib/network";
+import { getAuthErrorMessage, isTemporaryNetworkError, withTimeout } from "@/lib/network";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
   const navigate = useNavigate();
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitSignup = async () => {
+    if (loading) return;
     setLoading(true);
+    setCanRetry(false);
     try {
       const { error } = await withTimeout(supabase.auth.signUp({
         email,
@@ -30,15 +32,21 @@ export default function Signup() {
           data: { username },
           emailRedirectTo: window.location.origin,
         },
-      }), 15000);
+      }), 25000);
       if (error) throw error;
       toast.success("Аккаунт создан! Проверьте email для подтверждения.");
       navigate("/login");
     } catch (error) {
+      setCanRetry(isTemporaryNetworkError(error));
       toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitSignup();
   };
 
   return (
