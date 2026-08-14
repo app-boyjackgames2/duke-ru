@@ -10,26 +10,34 @@ import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import dukeIcon from "@/assets/duke-icon.jpeg";
-import { getAuthErrorMessage, withTimeout } from "@/lib/network";
+import { getAuthErrorMessage, isTemporaryNetworkError, withTimeout } from "@/lib/network";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLogin = async () => {
+    if (loading) return;
     setLoading(true);
+    setCanRetry(false);
     try {
-      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 15000);
+      const { error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }), 25000);
       if (error) throw error;
       navigate("/");
     } catch (error) {
+      setCanRetry(isTemporaryNetworkError(error));
       toast.error(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitLogin();
   };
 
   return (
@@ -80,6 +88,11 @@ export default function Login() {
           <Button type="submit" className="w-full duke-gradient" disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Войти"}
           </Button>
+          {canRetry && !loading && (
+            <Button type="button" variant="outline" className="w-full" onClick={() => void submitLogin()}>
+              Повторить попытку
+            </Button>
+          )}
         </form>
 
         <div className="flex items-center gap-3 my-4">
