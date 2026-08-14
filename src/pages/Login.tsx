@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import dukeIcon from "@/assets/duke-icon.jpeg";
-import { getAuthErrorMessage, withTimeout } from "@/lib/network";
+import { getAuthErrorMessage, isTemporaryNetworkError, withTimeout } from "@/lib/network";
 
 export default function Login() {
   const [email, setEmail] = useState("");
