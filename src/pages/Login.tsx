@@ -88,6 +88,11 @@ export default function Login() {
           <Button type="submit" className="w-full duke-gradient" disabled={loading}>
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Войти"}
           </Button>
+          {canRetry && !loading && (
+            <Button type="button" variant="outline" className="w-full" onClick={() => void submitLogin()}>
+              Повторить попытку
+            </Button>
+          )}
         </form>
 
         <div className="flex items-center gap-3 my-4">
